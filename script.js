@@ -6,16 +6,13 @@ let appliedTones = [];
 
 let selectionMode = localStorage.getItem('chinese_voca_mode') || 'exclude';
 
-// 📌 [핵심 수정] 두 모드의 데이터를 완전히 분리해서 따로 저장
 let excludedWords = JSON.parse(localStorage.getItem('chinese_voca_excluded')) || [];
 let includedWords = JSON.parse(localStorage.getItem('chinese_voca_included')) || [];
 
-// 현재 모드에 맞는 배열을 가져오는 함수
 function getCurrentList() {
     return selectionMode === 'exclude' ? excludedWords : includedWords;
 }
 
-// 현재 모드에 맞는 배열을 업데이트하고 로컬 스토리지에 저장하는 함수
 function updateCurrentList(newList) {
     if (selectionMode === 'exclude') {
         excludedWords = newList;
@@ -73,7 +70,7 @@ function updateModeUI() {
 
 function renderSidebarList() {
     vocaListUI.innerHTML = "";
-    let currentList = getCurrentList(); // 현재 모드에 맞는 배열 불러오기
+    let currentList = getCurrentList();
 
     allWords.forEach((word, index) => {
         const li = document.createElement('li');
@@ -152,7 +149,6 @@ fetch('data.json')
 
 
 startTestBtn.addEventListener('click', () => {
-    // 📌 [핵심] 시험 시작 시 현재 모드에 맞는 배열을 사용해 단어 필터링
     if (selectionMode === 'exclude') words = allWords.filter(w => !excludedWords.includes(w.chinese));
     else words = allWords.filter(w => includedWords.includes(w.chinese));
 
@@ -206,30 +202,12 @@ backBtn.addEventListener('click', () => {
     localStorage.removeItem('chinese_voca_index');
 });
 
-// 📌 [핵심] 모드를 바꿀 때마다 화면(체크박스)을 새로 그려줌
-modeExcludeBtn.addEventListener('click', () => { 
-    selectionMode = 'exclude'; 
-    localStorage.setItem('chinese_voca_mode', selectionMode); 
-    updateModeUI(); 
-    renderSidebarList(); // 제외 모드 리스트 불러오기
-});
-
-modeIncludeBtn.addEventListener('click', () => { 
-    selectionMode = 'include'; 
-    localStorage.setItem('chinese_voca_mode', selectionMode); 
-    updateModeUI(); 
-    renderSidebarList(); // 포함 모드 리스트 불러오기
-});
-
-resetChecksBtn.addEventListener('click', () => { 
-    if(confirm("현재 모드에서 체크한 내용을 모두 초기화하시겠습니까?")) { 
-        updateCurrentList([]); // 현재 모드의 리스트만 비움
-        renderSidebarList(); 
-    } 
-});
+modeExcludeBtn.addEventListener('click', () => { selectionMode = 'exclude'; localStorage.setItem('chinese_voca_mode', selectionMode); updateModeUI(); renderSidebarList(); });
+modeIncludeBtn.addEventListener('click', () => { selectionMode = 'include'; localStorage.setItem('chinese_voca_mode', selectionMode); updateModeUI(); renderSidebarList(); });
+resetChecksBtn.addEventListener('click', () => { if(confirm("현재 모드에서 체크한 내용을 모두 초기화하시겠습니까?")) { updateCurrentList([]); renderSidebarList(); } });
 
 
-// --- 아래부터 시험 진행 로직 (이전과 완전히 동일) ---
+// --- 아래부터 시험 진행 로직 ---
 
 function showWord() {
     localStorage.setItem('chinese_voca_index', currentIndex);
@@ -254,7 +232,13 @@ function showWord() {
     pinyinInput.focus();
 }
 
-function removeTones(str) { return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s/g, ''); }
+// 📌 [수정] 성조 기호뿐만 아니라 각종 어포스트로피( ', ’, `, ′ ) 기호까지 싹 지워주는 함수
+function removeTones(str) { 
+    return str.normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .toLowerCase()
+              .replace(/['’`′\s]/g, ''); // 격음 부호와 공백을 모두 제거
+}
 
 function shuffleArray(array) {
     let shuffled = [...array];
@@ -299,11 +283,30 @@ deleteBtn.addEventListener('click', () => { if (appliedTones.length > 0) { appli
 
 function checkAnswer() {
     const currentWord = words[currentIndex];
-    const userAnswer = pinyinInput.value.trim().toLowerCase().replace(/\s/g, ''); const correctAnswer = currentWord.pinyin.toLowerCase().replace(/\s/g, '');
+    
+    // 📌 [수정] 채점할 때도 정답(JSON)과 사용자 입력값 모두에서 격음 부호와 공백을 지우고 순수하게 비교함
+    const userAnswer = removeTones(pinyinInput.value);
+    const correctAnswer = removeTones(currentWord.pinyin);
 
-    if (userAnswer === correctAnswer) { feedbackMsg.textContent = "정답입니다! 👏"; feedbackMsg.style.color = "green"; correctAction(currentWord); } 
-    else if (removeTones(userAnswer) === removeTones(correctAnswer)) { feedbackMsg.textContent = "성조 틀림! (정답: " + currentWord.pinyin + ")"; feedbackMsg.style.color = "orange"; addToWrongList(currentWord); } 
-    else { feedbackMsg.textContent = "아예 틀림! (정답: " + currentWord.pinyin + ")"; feedbackMsg.style.color = "red"; addToWrongList(currentWord); }
+    // 성조까지 완벽히 포함해서 비교하기 위해 임시 변수 생성 (기호만 뺀 텍스트 상태)
+    const userRaw = pinyinInput.value.trim().toLowerCase().replace(/['’`′\s]/g, '');
+    const correctRaw = currentWord.pinyin.toLowerCase().replace(/['’`′\s]/g, '');
+
+    if (userRaw === correctRaw) { 
+        feedbackMsg.textContent = "정답입니다! 👏"; 
+        feedbackMsg.style.color = "green"; 
+        correctAction(currentWord); 
+    } 
+    else if (userAnswer === correctAnswer) { 
+        feedbackMsg.textContent = "성조 틀림! (정답: " + currentWord.pinyin + ")"; 
+        feedbackMsg.style.color = "orange"; 
+        addToWrongList(currentWord); 
+    } 
+    else { 
+        feedbackMsg.textContent = "아예 틀림! (정답: " + currentWord.pinyin + ")"; 
+        feedbackMsg.style.color = "red"; 
+        addToWrongList(currentWord); 
+    }
 }
 
 function correctAction(currentWord) {
