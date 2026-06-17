@@ -16,7 +16,7 @@ function getCurrentList() {
 function updateCurrentList(newList) {
     if (selectionMode === 'exclude') {
         excludedWords = newList;
-        localStorage.setItem('chinese_voca_excluded', JSON.stringify(excludedWords));
+        localStorage.setItem('chinese_voca_exclude', JSON.stringify(excludedWords));
     } else {
         includedWords = newList;
         localStorage.setItem('chinese_voca_included', JSON.stringify(includedWords));
@@ -207,7 +207,7 @@ modeIncludeBtn.addEventListener('click', () => { selectionMode = 'include'; loca
 resetChecksBtn.addEventListener('click', () => { if(confirm("현재 모드에서 체크한 내용을 모두 초기화하시겠습니까?")) { updateCurrentList([]); renderSidebarList(); } });
 
 
-// --- 아래부터 시험 진행 로직 ---
+// --- 시험 진행 로직 ---
 
 function showWord() {
     localStorage.setItem('chinese_voca_index', currentIndex);
@@ -232,12 +232,11 @@ function showWord() {
     pinyinInput.focus();
 }
 
-// 📌 [수정] 성조 기호뿐만 아니라 각종 어포스트로피( ', ’, `, ′ ) 기호까지 싹 지워주는 함수
+// 순수 성조 기호만 지워주는 함수 (격음 부호는 건드리지 않음)
 function removeTones(str) { 
     return str.normalize("NFD")
               .replace(/[\u0300-\u036f]/g, "")
-              .toLowerCase()
-              .replace(/['’`′\s]/g, ''); // 격음 부호와 공백을 모두 제거
+              .toLowerCase();
 }
 
 function shuffleArray(array) {
@@ -247,7 +246,8 @@ function shuffleArray(array) {
 }
 
 function updateInputBox() {
-    let raw = removeTones(pinyinInput.value).replace(/v/g, 'ü');
+    // 📌 [수정] 사용자가 어떤 종류의 따옴표나 격음 부호를 입력하더라도 표준 기호(')로 통일해서 유지함
+    let raw = removeTones(pinyinInput.value).replace(/v/g, 'ü').replace(/[’`′]/g, "'");
     let cursorPosition = pinyinInput.selectionStart;
     let toneIndex = 0;
     
@@ -256,7 +256,14 @@ function updateInputBox() {
             let t = appliedTones[toneIndex];
             toneIndex++;
             if (t === 4) return match;
-            if (match.includes('a')) return match.replace('a', toneMarks['a'][t]); if (match.includes('e')) return match.replace('e', toneMarks['e'][t]); if (match.includes('o')) return match.replace('o', toneMarks['o'][t]); if (match.includes('iu')) return match.replace('u', toneMarks['u'][t]); if (match.includes('ui')) return match.replace('i', toneMarks['i'][t]); if (match.includes('i')) return match.replace('i', toneMarks['i'][t]); if (match.includes('u')) return match.replace('u', toneMarks['u'][t]); if (match.includes('ü')) return match.replace('ü', toneMarks['ü'][t]);
+            if (match.includes('a')) return match.replace('a', toneMarks['a'][t]); 
+            if (match.includes('e')) return match.replace('e', toneMarks['e'][t]); 
+            if (match.includes('o')) return match.replace('o', toneMarks['o'][t]); 
+            if (match.includes('iu')) return match.replace('u', toneMarks['u'][t]); 
+            if (match.includes('ui')) return match.replace('i', toneMarks['i'][t]); 
+            if (match.includes('i')) return match.replace('i', toneMarks['i'][t]); 
+            if (match.includes('u')) return match.replace('u', toneMarks['u'][t]); 
+            if (match.includes('ü')) return match.replace('ü', toneMarks['ü'][t]);
         }
         return match;
     });
@@ -266,7 +273,9 @@ function updateInputBox() {
 }
 
 pinyinInput.addEventListener('input', () => {
-    let raw = removeTones(pinyinInput.value); let vowelMatch = raw.match(/[aeiouü]+/ig); let vowelCount = vowelMatch ? vowelMatch.length : 0;
+    let raw = removeTones(pinyinInput.value); 
+    let vowelMatch = raw.match(/[aeiouü]+/ig); 
+    let vowelCount = vowelMatch ? vowelMatch.length : 0;
     if (appliedTones.length > vowelCount) appliedTones = appliedTones.slice(0, vowelCount);
     updateInputBox();
 });
@@ -284,20 +293,25 @@ deleteBtn.addEventListener('click', () => { if (appliedTones.length > 0) { appli
 function checkAnswer() {
     const currentWord = words[currentIndex];
     
-    // 📌 [수정] 채점할 때도 정답(JSON)과 사용자 입력값 모두에서 격음 부호와 공백을 지우고 순수하게 비교함
-    const userAnswer = removeTones(pinyinInput.value);
-    const correctAnswer = removeTones(currentWord.pinyin);
+    // 📌 [수정] 채점할 때 양쪽 데이터 모두 공백을 제거하고 격음 부호 형태를 표준(')으로 통일함
+    const userRaw = pinyinInput.value.trim().toLowerCase().replace(/\s/g, '').replace(/[’`′]/g, "'");
+    const correctRaw = currentWord.pinyin.toLowerCase().replace(/\s/g, '').replace(/[’`′]/g, "'");
 
-    // 성조까지 완벽히 포함해서 비교하기 위해 임시 변수 생성 (기호만 뺀 텍스트 상태)
-    const userRaw = pinyinInput.value.trim().toLowerCase().replace(/['’`′\s]/g, '');
-    const correctRaw = currentWord.pinyin.toLowerCase().replace(/['’`′\s]/g, '');
+    const userAnswerTonesRemoved = removeTones(userRaw);
+    const correctAnswerTonesRemoved = removeTones(correctRaw);
 
     if (userRaw === correctRaw) { 
         feedbackMsg.textContent = "정답입니다! 👏"; 
         feedbackMsg.style.color = "green"; 
+        
+        // 📌 [추가] 맞았을 경우 오답 리스트(wrongWordsList)에서 이 단어를 실시간으로 삭제!
+        wrongWordsList = wrongWordsList.filter(w => w.chinese !== currentWord.chinese);
+        localStorage.setItem('chinese_voca_wrong', JSON.stringify(wrongWordsList));
+        renderWrongListUI(); // 오답 창 리스트 즉시 새로고침
+
         correctAction(currentWord); 
     } 
-    else if (userAnswer === correctAnswer) { 
+    else if (userAnswerTonesRemoved === correctAnswerTonesRemoved) { 
         feedbackMsg.textContent = "성조 틀림! (정답: " + currentWord.pinyin + ")"; 
         feedbackMsg.style.color = "orange"; 
         addToWrongList(currentWord); 
@@ -315,12 +329,21 @@ function correctAction(currentWord) {
 
 function addToWrongList(word) {
     let alreadyExists = wrongWordsList.some(w => w.chinese === word.chinese);
-    if (!alreadyExists) { wrongWordsList.push(word); localStorage.setItem('chinese_voca_wrong', JSON.stringify(wrongWordsList)); renderWrongListUI(); }
+    if (!alreadyExists) { 
+        wrongWordsList.push(word); 
+        localStorage.setItem('chinese_voca_wrong', JSON.stringify(wrongWordsList));
+        renderWrongListUI(); 
+    }
     correctAction(word);
 }
 
 function renderWrongListUI() {
-    wrongList.innerHTML = ""; wrongWordsList.forEach(word => { const li = document.createElement('li'); li.innerHTML = `<strong>${word.chinese}</strong> (${word.pinyin}) : ${word.korean}`; wrongList.appendChild(li); });
+    wrongList.innerHTML = ""; 
+    wrongWordsList.forEach(word => { 
+        const li = document.createElement('li'); 
+        li.innerHTML = `<strong>${word.chinese}</strong> (${word.pinyin}) : ${word.korean}`; 
+        wrongList.appendChild(li); 
+    });
 }
 
 function restartQuiz(wordList) {
@@ -330,5 +353,10 @@ function restartQuiz(wordList) {
 shuffleBtn.addEventListener('click', () => { words = shuffleArray([...words]); currentIndex = 0; localStorage.setItem('chinese_voca_active_words', JSON.stringify(words)); localStorage.removeItem('chinese_voca_index'); showWord(); });
 document.getElementById('restart-all-btn').addEventListener('click', () => restartQuiz(JSON.parse(localStorage.getItem('chinese_voca_active_words'))));
 document.getElementById('restart-random-btn').addEventListener('click', () => restartQuiz(shuffleArray(JSON.parse(localStorage.getItem('chinese_voca_active_words')))));
-document.getElementById('retry-wrong-btn').addEventListener('click', () => { words = [...wrongWordsList]; currentIndex = 0; progressText.style.display = "inline-block"; shuffleBtn.style.display = "inline-block"; chineseText.style.display = "block"; showWord(); });
+document.getElementById('retry-wrong-btn').addEventListener('click', () => { 
+    words = [...wrongWordsList]; 
+    currentIndex = 0; 
+    progressText.style.display = "inline-block"; shuffleBtn.style.display = "inline-block"; chineseText.style.display = "block"; 
+    showWord(); 
+});
 submitBtn.addEventListener('click', checkAnswer); nextBtn.addEventListener('click', () => { currentIndex++; showWord(); }); pinyinInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') submitBtn.click(); });
