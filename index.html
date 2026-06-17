@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>중국어 단어장</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; text-align: center; margin-top: 50px; background-color: #f5f5f5; }
+        .card { position: relative; background: white; border-radius: 15px; padding: 40px 30px 30px 30px; width: 380px; margin: 0 auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        
+        /* 섞기 버튼을 카드 우측 상단에 작게 배치 */
+        #shuffle-btn { position: absolute; top: 15px; right: 15px; font-size: 0.8rem; padding: 5px 10px; background-color: #9E9E9E; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        #shuffle-btn:hover { background-color: #757575; }
+
+        #chinese-text { color: #333; margin-top: 0; margin-bottom: 15px; font-size: 3.5rem; }
+        #korean-text { color: #1976D2; margin-top: 0; font-size: 1.5rem; display: none; }
+        
+        input { font-size: 1.2rem; padding: 10px; width: 80%; margin: 10px 0 20px 0; border: 2px solid #ddd; border-radius: 5px; text-align: center; }
+        
+        button { font-size: 1rem; padding: 10px 20px; border: none; border-radius: 5px; background-color: #4CAF50; color: white; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        
+        #tone-buttons { margin-bottom: 15px; display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; }
+        .tone-btn { padding: 5px 8px; font-size: 0.9rem; background-color: #f1f1f1; color: #333; border: 1px solid #ccc; }
+        .tone-btn:hover { background-color: #e0e0e0; }
+        
+        #delete-btn { background-color: #ff5252; color: white; border: 1px solid #ff5252; font-weight: bold; }
+        #delete-btn:hover { background-color: #ff1744; }
+        
+        #end-buttons { display: none; margin-top: 15px; }
+        #end-buttons button { margin: 5px; font-size: 0.9rem; }
+        #restart-all-btn { background-color: #ff9800; }
+        #restart-random-btn { background-color: #9C27B0; color: white; }
+        #retry-wrong-btn { background-color: #f44336; color: white; }
+
+        .feedback { font-size: 1.1rem; font-weight: bold; margin: 15px 0; min-height: 25px; }
+        
+        .wrong-words-container { margin-top: 40px; background: #fff; width: 380px; margin-left: auto; margin-right: auto; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .wrong-words-container h3 { color: #d32f2f; margin-top: 0; border-bottom: 2px solid #d32f2f; padding-bottom: 10px;}
+        ul { list-style-type: none; padding: 0; text-align: left; }
+        li { padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <button id="shuffle-btn">🔀 무작위 섞기</button>
+        <h2 id="chinese-text">로딩 중...</h2>
+        <h1 id="korean-text"></h1>
+
+        <input type="text" id="pinyin-input" placeholder="병음 입력" autocomplete="off">
+        
+        <div id="tone-buttons">
+            <button class="tone-btn" data-tone="1">1성</button>
+            <button class="tone-btn" data-tone="2">2성</button>
+            <button class="tone-btn" data-tone="3">3성</button>
+            <button class="tone-btn" data-tone="4">4성</button>
+            <button class="tone-btn" data-tone="5">경성</button>
+            <button class="tone-btn" id="delete-btn">⌫ 성조 지우기</button>
+        </div>
+
+        <button id="submit-btn">확인</button>
+        <button id="next-btn" style="display: none; background-color: #2196F3;">다음 단어</button>
+        
+        <div id="end-buttons">
+            <button id="restart-all-btn">🔄 처음부터</button>
+            <button id="restart-random-btn">🔀 랜덤 시작</button>
+            <button id="retry-wrong-btn">🚨 틀린 단어만</button>
+        </div>
+
+        <p id="feedback-msg" class="feedback"></p>
+    </div>
+
+    <div class="wrong-words-container">
+        <h3>🚨 오답 노트 (틀린 단어장)</h3>
+        <ul id="wrong-list"></ul>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
