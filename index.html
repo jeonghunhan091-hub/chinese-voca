@@ -4,27 +4,59 @@
     <meta charset="UTF-8">
     <title>중국어 단어장</title>
     <style>
-        body { font-family: 'Malgun Gothic', sans-serif; text-align: center; margin-top: 50px; background-color: #f5f5f5; }
-        .card { position: relative; background: white; border-radius: 15px; padding: 40px 30px 30px 30px; width: 380px; margin: 0 auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .app-container { display: flex; gap: 20px; max-width: 1000px; width: 100%; align-items: flex-start; }
         
-        /* 섞기 버튼을 카드 우측 상단에 작게 배치 */
-        #shuffle-btn { position: absolute; top: 15px; right: 15px; font-size: 0.8rem; padding: 5px 10px; background-color: #9E9E9E; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        #shuffle-btn:hover { background-color: #757575; }
+        #sidebar { background: white; border-radius: 15px; padding: 20px; width: 350px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; max-height: 85vh; }
+        #sidebar h3 { margin-top: 0; text-align: center; color: #333; }
+        
+        .mode-toggles { display: flex; gap: 5px; margin-bottom: 10px; }
+        .mode-btn { flex: 1; padding: 8px; font-size: 0.85rem; border: 1px solid #ccc; background-color: #f9f9f9; cursor: pointer; border-radius: 5px; }
+        .mode-btn.active { background-color: #2196F3; color: white; border-color: #2196F3; font-weight: bold; }
+        
+        .reset-btn-container { text-align: right; margin-bottom: 10px; }
+        #reset-checks-btn { font-size: 0.8rem; padding: 5px 10px; background-color: #757575; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        #reset-checks-btn:hover { background-color: #616161; }
 
-        #chinese-text { color: #333; margin-top: 0; margin-bottom: 15px; font-size: 3.5rem; }
+        /* 📌 범위 설정 영역 디자인 추가 */
+        .range-selector { display: flex; align-items: center; gap: 5px; margin-bottom: 10px; padding: 10px; background-color: #f0f8ff; border-radius: 5px; border: 1px solid #bbdefb; font-size: 0.85rem; justify-content: space-between; }
+        .range-selector input[type="number"] { width: 45px; padding: 5px; border: 1px solid #ccc; border-radius: 3px; text-align: center; }
+        .range-btn-group { display: flex; gap: 3px; }
+        .range-selector button { padding: 5px 10px; font-size: 0.8rem; cursor: pointer; border: none; border-radius: 3px; color: white; font-weight: bold; }
+        #range-check-btn { background-color: #4CAF50; }
+        #range-check-btn:hover { background-color: #388E3C; }
+        #range-uncheck-btn { background-color: #f44336; }
+        #range-uncheck-btn:hover { background-color: #d32f2f; }
+
+        #voca-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex-grow: 1; border: 1px solid #eee; border-radius: 5px; padding: 10px; }
+        #voca-list li { padding: 5px 0; border-bottom: 1px dashed #eee; font-size: 0.95rem; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        #voca-list li:hover { background-color: #f1f1f1; }
+        #voca-list input[type="checkbox"] { transform: scale(1.2); cursor: pointer; }
+        .word-index { color: #888; font-size: 0.85rem; min-width: 20px; display: inline-block; }
+
+        #start-test-btn { margin-top: 15px; background-color: #FF5722; color: white; border: none; padding: 15px; font-size: 1.1rem; font-weight: bold; border-radius: 5px; cursor: pointer; }
+        #start-test-btn:hover { background-color: #E64A19; }
+
+        #main-content { flex: 1; display: flex; flex-direction: column; align-items: center; }
+        .card { position: relative; background: white; border-radius: 15px; padding: 40px 30px 30px 30px; width: 380px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
+        
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        #back-btn { font-size: 0.85rem; padding: 5px 10px; background-color: #607D8B; color: white; border: none; border-radius: 5px; cursor: pointer; display: none; }
+        #progress-text { font-size: 0.9rem; font-weight: bold; color: #E91E63; display: none; }
+        #shuffle-btn { font-size: 0.8rem; padding: 5px 10px; background-color: #9E9E9E; color: white; border: none; border-radius: 5px; cursor: pointer; display: none; }
+
+        #chinese-text { color: #333; margin-top: 10px; margin-bottom: 15px; font-size: 3.5rem; }
         #korean-text { color: #1976D2; margin-top: 0; font-size: 1.5rem; display: none; }
         
-        input { font-size: 1.2rem; padding: 10px; width: 80%; margin: 10px 0 20px 0; border: 2px solid #ddd; border-radius: 5px; text-align: center; }
+        input[type="text"] { font-size: 1.2rem; padding: 10px; width: 80%; margin: 10px 0 20px 0; border: 2px solid #ddd; border-radius: 5px; text-align: center; }
         
         button { font-size: 1rem; padding: 10px 20px; border: none; border-radius: 5px; background-color: #4CAF50; color: white; cursor: pointer; }
         button:hover { background-color: #45a049; }
         
-        #tone-buttons { margin-bottom: 15px; display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; }
+        #tone-buttons { margin-bottom: 15px; display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; display: none; }
         .tone-btn { padding: 5px 8px; font-size: 0.9rem; background-color: #f1f1f1; color: #333; border: 1px solid #ccc; }
         .tone-btn:hover { background-color: #e0e0e0; }
-        
         #delete-btn { background-color: #ff5252; color: white; border: 1px solid #ff5252; font-weight: bold; }
-        #delete-btn:hover { background-color: #ff1744; }
         
         #end-buttons { display: none; margin-top: 15px; }
         #end-buttons button { margin: 5px; font-size: 0.9rem; }
@@ -34,45 +66,89 @@
 
         .feedback { font-size: 1.1rem; font-weight: bold; margin: 15px 0; min-height: 25px; }
         
-        .wrong-words-container { margin-top: 40px; background: #fff; width: 380px; margin-left: auto; margin-right: auto; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .wrong-words-container { margin-top: 20px; background: #fff; width: 380px; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: none; }
         .wrong-words-container h3 { color: #d32f2f; margin-top: 0; border-bottom: 2px solid #d32f2f; padding-bottom: 10px;}
-        ul { list-style-type: none; padding: 0; text-align: left; }
-        li { padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 1.1rem; }
+        ul.wrong-list { list-style-type: none; padding: 0; text-align: left; }
+        ul.wrong-list li { padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 1.1rem; }
+        
+        #welcome-screen { text-align: center; color: #555; padding: 50px 0; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <button id="shuffle-btn">🔀 무작위 섞기</button>
-        <h2 id="chinese-text">로딩 중...</h2>
-        <h1 id="korean-text"></h1>
+    <div class="app-container">
+        <aside id="sidebar">
+            <h3>📝 단어장 관리</h3>
+            
+            <div class="mode-toggles">
+                <button class="mode-btn active" id="mode-exclude-btn">제외할 단어 선택</button>
+                <button class="mode-btn" id="mode-include-btn">시험 볼 단어 선택</button>
+            </div>
+            
+            <div class="reset-btn-container">
+                <button id="reset-checks-btn">🔄 체크 전체 초기화</button>
+            </div>
 
-        <input type="text" id="pinyin-input" placeholder="병음 입력" autocomplete="off">
-        
-        <div id="tone-buttons">
-            <button class="tone-btn" data-tone="1">1성</button>
-            <button class="tone-btn" data-tone="2">2성</button>
-            <button class="tone-btn" data-tone="3">3성</button>
-            <button class="tone-btn" data-tone="4">4성</button>
-            <button class="tone-btn" data-tone="5">경성</button>
-            <button class="tone-btn" id="delete-btn">⌫ 성조 지우기</button>
-        </div>
+            <div class="range-selector">
+                <div>
+                    <input type="number" id="range-start" placeholder="1" min="1">
+                    <span>~</span>
+                    <input type="number" id="range-end" placeholder="10" min="1">
+                </div>
+                <div class="range-btn-group">
+                    <button id="range-check-btn">✔ 체크</button>
+                    <button id="range-uncheck-btn">✖ 해제</button>
+                </div>
+            </div>
 
-        <button id="submit-btn">확인</button>
-        <button id="next-btn" style="display: none; background-color: #2196F3;">다음 단어</button>
-        
-        <div id="end-buttons">
-            <button id="restart-all-btn">🔄 처음부터</button>
-            <button id="restart-random-btn">🔀 랜덤 시작</button>
-            <button id="retry-wrong-btn">🚨 틀린 단어만</button>
-        </div>
+            <ul id="voca-list"></ul>
+            
+            <button id="start-test-btn">🚀 시험 시작하기</button>
+        </aside>
 
-        <p id="feedback-msg" class="feedback"></p>
-    </div>
+        <main id="main-content">
+            <div class="card">
+                <div class="card-header">
+                    <button id="back-btn">◀ 목록으로</button>
+                    <span id="progress-text"></span>
+                    <button id="shuffle-btn">🔀 무작위</button>
+                </div>
 
-    <div class="wrong-words-container">
-        <h3>🚨 오답 노트 (틀린 단어장)</h3>
-        <ul id="wrong-list"></ul>
+                <div id="welcome-screen">
+                    <h2>👈 왼쪽 단어장에서<br>설정을 마치고<br>시험을 시작하세요!</h2>
+                </div>
+
+                <h2 id="chinese-text" style="display: none;">로딩 중...</h2>
+                <h1 id="korean-text"></h1>
+
+                <input type="text" id="pinyin-input" placeholder="병음 입력" autocomplete="off" style="display: none;">
+                
+                <div id="tone-buttons">
+                    <button class="tone-btn" data-tone="1">1성</button>
+                    <button class="tone-btn" data-tone="2">2성</button>
+                    <button class="tone-btn" data-tone="3">3성</button>
+                    <button class="tone-btn" data-tone="4">4성</button>
+                    <button class="tone-btn" data-tone="5">경성</button>
+                    <button class="tone-btn" id="delete-btn">⌫ 지우기</button>
+                </div>
+
+                <button id="submit-btn" style="display: none;">확인</button>
+                <button id="next-btn" style="display: none; background-color: #2196F3;">다음 단어</button>
+                
+                <div id="end-buttons">
+                    <button id="restart-all-btn">🔄 이 설정대로 처음부터</button>
+                    <button id="restart-random-btn">🔀 랜덤 시작</button>
+                    <button id="retry-wrong-btn">🚨 틀린 단어만</button>
+                </div>
+
+                <p id="feedback-msg" class="feedback"></p>
+            </div>
+
+            <div class="wrong-words-container" id="wrong-container">
+                <h3>🚨 오답 노트 (틀린 단어장)</h3>
+                <ul class="wrong-list" id="wrong-list"></ul>
+            </div>
+        </main>
     </div>
 
     <script src="script.js"></script>
