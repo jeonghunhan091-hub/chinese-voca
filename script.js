@@ -121,7 +121,7 @@ fetch(jsonFileName)
         // 📌 JSON 형식(구/신) 호환 및 [cite] 태그 완벽 제거
         allWords = data.map(item => {
             let rawKorean = item.korean || item.meaning; 
-            let cleanKorean = rawKorean ? rawKorean.replace(/\s*\/g, '') : '';
+            let cleanKorean = rawKorean ? rawKorean.replace(/\s*/g, '') : '';
             return { chinese: item.chinese || item.word, pinyin: item.pinyin, korean: cleanKorean };
         });
         
