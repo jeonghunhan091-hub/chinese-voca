@@ -60,7 +60,7 @@ const submitBtn = document.getElementById('submit-btn');
 const nextBtn = document.getElementById('next-btn');
 const forgotHanziBtn = document.getElementById('forgot-hanzi-btn');
 const feedbackMsg = document.getElementById('feedback-msg');
-const sourceInfoBox = document.getElementById('source-info-box'); // 📌 출처 박스
+const sourceInfoBox = document.getElementById('source-info-box');
 const wrongList = document.getElementById('wrong-list');
 const toneButtons = document.getElementById('tone-buttons');
 const endButtons = document.getElementById('end-buttons');
@@ -118,11 +118,13 @@ const jsonFileName = currentScope === 'midterm' ? 'midterm.json' : 'final.json';
 fetch(jsonFileName)
     .then(response => response.json())
     .then(data => {
+        // 📌 JSON 형식(구/신) 호환 및 [cite] 태그 완벽 제거
         allWords = data.map(item => {
             let rawKorean = item.korean || item.meaning; 
             let cleanKorean = rawKorean ? rawKorean.replace(/\s*\/g, '') : '';
             return { chinese: item.chinese || item.word, pinyin: item.pinyin, korean: cleanKorean };
         });
+        
         rangeEnd.placeholder = allWords.length; updateModeUI(); renderSidebarList();
         
         if (localStorage.getItem(getStoreKey('index')) && localStorage.getItem(getStoreKey('active_words'))) {
@@ -132,12 +134,14 @@ fetch(jsonFileName)
             startTestUI();
         }
     })
-    .catch(error => { console.error("데이터 로드 실패:", error); vocaListUI.innerHTML = `<li style="color:red; text-align:center;">${jsonFileName} 파일을 찾을 수 없습니다!</li>`; });
+    .catch(error => { 
+        console.error("데이터 로드 실패:", error); 
+        vocaListUI.innerHTML = `<li style="color:red; text-align:center;">${jsonFileName} 파일에 문제가 있습니다. 형식을 확인하세요!</li>`; 
+    });
 
-// 📌 [핵심 1] 다음절 단어를 한 글자씩 쪼개고, 1글자짜리 원본 단어는 필터링하는 마법의 함수
+
 function generateSingleCharWords(sourceWords) {
     const singleCharExcludes = new Set();
-    // 조건 2: 이미 단어장에 존재하는 1글자짜리 단어는 쪼개기 시험에서 아예 제외하기 위해 기록
     sourceWords.forEach(w => { if (w.chinese.length === 1) singleCharExcludes.add(w.chinese); });
 
     const charMap = new Map();
@@ -148,26 +152,22 @@ function generateSingleCharWords(sourceWords) {
             let pinyinStr = wordObj.pinyin.replace(/['’`′]/g, '');
             let syllables = pinyinStr.includes(' ') ? pinyinStr.split(/\s+/) : (pinyinStr.match(syllableRegex) || []);
 
-            // 글자 수와 병음 음절 수가 똑같이 분리되었을 때만 작업 진행
             if (syllables.length === wordObj.chinese.length) {
                 for (let i = 0; i < wordObj.chinese.length; i++) {
                     let char = wordObj.chinese[i];
                     let py = syllables[i];
 
-                    // 조건 2 적용: 1글자로 이미 배운 단어면 패스
                     if (singleCharExcludes.has(char)) continue;
 
-                    // 조건 3 적용: 처음 나오는 글자면 새로 등록 (중복 출제 방지)
                     if (!charMap.has(char)) {
                         charMap.set(char, {
                             chinese: char,
                             pinyin: py.toLowerCase(),
-                            korean: "한 글자 병음 맞추기", // 단일 글자의 뜻은 모르므로 통일
-                            sources: [] // 이 글자가 포함된 원래 단어들을 모아둘 배열
+                            korean: "한 글자 병음 맞추기", 
+                            sources: [] 
                         });
                     }
                     
-                    // 조건 4를 위해 원본 단어 출처를 저장 (중복 저장 방지)
                     const entry = charMap.get(char);
                     if (!entry.sources.some(s => s.chinese === wordObj.chinese)) {
                         entry.sources.push(wordObj);
@@ -187,7 +187,6 @@ startTestBtn.addEventListener('click', () => {
 
     if (selectedWords.length === 0) { alert("선택된 시험 단어가 없습니다! 설정을 확인해 주세요."); return; }
 
-    // 📌 [핵심 2] 쪼개기 모드일 경우 데이터를 가공해서 시험 배열로 세팅
     if (questionMode === 'single-char') {
         words = generateSingleCharWords(selectedWords);
         if (words.length === 0) {
@@ -238,13 +237,11 @@ function showWord() {
     }
 
     const currentWord = words[currentIndex];
-    sourceInfoBox.style.display = "none"; // 새 단어 넘어가면 출처 숨기기
+    sourceInfoBox.style.display = "none"; 
     
-    // 📌 [모드별 화면 텍스트 노출 분기]
     if (questionMode === 'ko-to-py') {
         koreanText.textContent = currentWord.korean; koreanText.style.display = "block"; chineseText.style.display = "none";
     } else {
-        // zh-to-py 이거나 single-char 모드일 때
         chineseText.textContent = currentWord.chinese; chineseText.style.display = "block"; koreanText.style.display = "none";
     }
 
@@ -340,7 +337,6 @@ function correctAction(currentWord) {
         koreanText.textContent = currentWord.korean; koreanText.style.display = "block"; 
     }
     
-    // 📌 [핵심 4] 한 글자 쪼개기 모드일 때만 출처 단어들을 표시해줌
     if (questionMode === 'single-char' && currentWord.sources) {
         let sourceHTML = "<strong>💡 이 글자가 포함된 단어:</strong><br><br>";
         sourceHTML += currentWord.sources.map(s => `• ${s.chinese} (${s.pinyin}) : ${s.korean}`).join('<br>');
