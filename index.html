@@ -61,6 +61,7 @@
         .tone-btn:hover { background-color: #e0e0e0; }
         #delete-btn { background-color: #ff5252; color: white; border: 1px solid #ff5252; font-weight: bold; }
         
+        /* 다음 단어 & 한자 모름 버튼 구역 */
         .action-buttons { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
         #next-btn { background-color: #2196F3; display: none; }
         #forgot-hanzi-btn { background-color: #9C27B0; display: none; font-size: 0.9rem; }
@@ -72,12 +73,8 @@
         #restart-random-btn { background-color: #9C27B0; color: white; }
         #retry-wrong-btn { background-color: #f44336; color: white; }
 
-        .feedback { font-size: 1.1rem; font-weight: bold; margin: 15px 0 5px 0; min-height: 25px; }
+        .feedback { font-size: 1.1rem; font-weight: bold; margin: 15px 0; min-height: 25px; }
         
-        /* 📌 출처 표시 박스 디자인 추가 */
-        #source-info-box { display: none; margin-top: 15px; padding: 15px; background-color: #FFF9C4; border: 1px solid #FBC02D; border-radius: 8px; text-align: left; font-size: 0.95rem; color: #333; line-height: 1.5; }
-        #source-info-box strong { color: #E65100; }
-
         .wrong-words-container { margin-top: 20px; background: #fff; width: 400px; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: none; }
         .wrong-words-container h3 { color: #d32f2f; margin-top: 0; border-bottom: 2px solid #d32f2f; padding-bottom: 10px;}
         ul.wrong-list { list-style-type: none; padding: 0; text-align: left; }
@@ -98,8 +95,6 @@
             <select id="qmode-select">
                 <option value="zh-to-py">문제: 한자 보고 병음 맞추기</option>
                 <option value="ko-to-py">문제: 뜻 보고 병음 맞추기</option>
-                <!-- 📌 한 글자 쪼개기 모드 추가 -->
-                <option value="single-char">🔥 문제: 한 글자씩 쪼개서 맞추기</option>
             </select>
 
             <h3>📝 단어장 관리</h3>
@@ -158,11 +153,6 @@
 
                 <button id="submit-btn" style="display: none;">확인</button>
                 
-                <p id="feedback-msg" class="feedback"></p>
-
-                <!-- 📌 출처 표시 박스 -->
-                <div id="source-info-box"></div>
-
                 <div class="action-buttons">
                     <button id="next-btn">다음 단어</button>
                     <button id="forgot-hanzi-btn">🤔 한자 기억 안 남 (오답 추가)</button>
@@ -173,6 +163,8 @@
                     <button id="restart-random-btn">🔀 랜덤 시작</button>
                     <button id="retry-wrong-btn">🚨 틀린 단어만</button>
                 </div>
+
+                <p id="feedback-msg" class="feedback"></p>
             </div>
 
             <div class="wrong-words-container" id="wrong-container">
