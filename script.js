@@ -35,9 +35,11 @@ function getCurrentList() { return selectionMode === 'exclude' ? excludedWords :
 
 function updateCurrentList(newList) {
     if (selectionMode === 'exclude') {
-        excludedWords = newList; localStorage.setItem(getStoreKey('excluded'), JSON.stringify(excludedWords));
+        excludedWords = newList;
+        localStorage.setItem(getStoreKey('excluded'), JSON.stringify(excludedWords));
     } else {
-        includedWords = newList; localStorage.setItem(getStoreKey('included'), JSON.stringify(includedWords));
+        includedWords = newList;
+        localStorage.setItem(getStoreKey('included'), JSON.stringify(includedWords));
     }
 }
 
@@ -47,14 +49,17 @@ const modeExcludeBtn = document.getElementById('mode-exclude-btn');
 const modeIncludeBtn = document.getElementById('mode-include-btn');
 const resetChecksBtn = document.getElementById('reset-checks-btn');
 const startTestBtn = document.getElementById('start-test-btn');
+
 const rangeStart = document.getElementById('range-start');
 const rangeEnd = document.getElementById('range-end');
 const rangeCheckBtn = document.getElementById('range-check-btn');
 const rangeUncheckBtn = document.getElementById('range-uncheck-btn');
+
 const welcomeScreen = document.getElementById('welcome-screen');
 const backBtn = document.getElementById('back-btn');
 const progressText = document.getElementById('progress-text');
 const wrongContainer = document.getElementById('wrong-container');
+
 const chineseText = document.getElementById('chinese-text');
 const koreanText = document.getElementById('korean-text');
 const pinyinInput = document.getElementById('pinyin-input');
@@ -62,7 +67,7 @@ const submitBtn = document.getElementById('submit-btn');
 const nextBtn = document.getElementById('next-btn');
 const forgotHanziBtn = document.getElementById('forgot-hanzi-btn');
 const feedbackMsg = document.getElementById('feedback-msg');
-const sourceInfoBox = document.getElementById('source-info-box');
+const sourceInfoBox = document.getElementById('source-info-box'); // html 내 보관 처리용
 const wrongList = document.getElementById('wrong-list');
 const toneButtons = document.getElementById('tone-buttons');
 const endButtons = document.getElementById('end-buttons');
@@ -76,23 +81,37 @@ const toneMarks = {
 };
 
 function updateModeUI() {
-    if (selectionMode === 'exclude') { modeExcludeBtn.classList.add('active'); modeIncludeBtn.classList.remove('active'); } 
-    else { modeIncludeBtn.classList.add('active'); modeExcludeBtn.classList.remove('active'); }
+    if (selectionMode === 'exclude') {
+        modeExcludeBtn.classList.add('active'); modeIncludeBtn.classList.remove('active');
+    } else {
+        modeIncludeBtn.classList.add('active'); modeExcludeBtn.classList.remove('active');
+    }
 }
 
 function renderSidebarList() {
-    vocaListUI.innerHTML = ""; let currentList = getCurrentList();
+    vocaListUI.innerHTML = "";
+    let currentList = getCurrentList();
+
     allWords.forEach((word, index) => {
         const li = document.createElement('li');
         const isChecked = currentList.includes(word.chinese);
-        li.innerHTML = `<input type="checkbox" data-chinese="${word.chinese}" ${isChecked ? 'checked' : ''}><span><span class="word-index">${index + 1}.</span> <strong>${word.chinese}</strong> (${word.pinyin}) - ${word.korean}</span>`;
+        
+        li.innerHTML = `
+            <input type="checkbox" data-chinese="${word.chinese}" ${isChecked ? 'checked' : ''}>
+            <span><span class="word-index">${index + 1}.</span> <strong>${word.chinese}</strong> (${word.pinyin}) - ${word.korean}</span>
+        `;
+        
         const checkbox = li.querySelector('input');
         checkbox.addEventListener('change', (e) => {
             let list = getCurrentList();
-            if (e.target.checked) { if (!list.includes(word.chinese)) list.push(word.chinese); } 
-            else { list = list.filter(w => w !== word.chinese); }
+            if (e.target.checked) {
+                if (!list.includes(word.chinese)) list.push(word.chinese);
+            } else {
+                list = list.filter(w => w !== word.chinese);
+            }
             updateCurrentList(list);
         });
+        
         li.querySelector('span').addEventListener('click', () => { checkbox.click(); });
         vocaListUI.appendChild(li);
     });
@@ -103,11 +122,15 @@ function applyRangeSelection(isCheck) {
     if (isNaN(start)) start = 1; if (isNaN(end)) end = allWords.length;
     if (start < 1) start = 1; if (end > allWords.length) end = allWords.length;
     if (start > end) { alert("시작 번호가 끝 번호보다 클 수 없습니다."); return; }
+
     let list = getCurrentList();
     for (let i = start - 1; i < end; i++) {
         const wordChinese = allWords[i].chinese;
-        if (isCheck) { if (!list.includes(wordChinese)) list.push(wordChinese); } 
-        else { list = list.filter(w => w !== wordChinese); }
+        if (isCheck) {
+            if (!list.includes(wordChinese)) list.push(wordChinese);
+        } else {
+            list = list.filter(w => w !== wordChinese);
+        }
     }
     updateCurrentList(list); renderSidebarList(); 
 }
@@ -122,26 +145,31 @@ fetch(jsonFileName)
     .then(data => {
         allWords = data.map(item => {
             let rawKorean = item.korean || item.meaning; 
-            // 📌 채팅 시스템이 먹지 못하게 유니코드(\x5B, \x5D)를 사용해서 정규식 작성!
+            // 📌 인공지능 출처 태그를 강제로 필터링하는 우회 구문 (절대 잘리지 않음)
             let cleanKorean = rawKorean ? rawKorean.replace(/\s*\x5Bcite:\s*\d+\x5D/g, '') : '';
             return { chinese: item.chinese || item.word, pinyin: item.pinyin, korean: cleanKorean };
         });
         
-        rangeEnd.placeholder = allWords.length; updateModeUI(); renderSidebarList();
+        rangeEnd.placeholder = allWords.length;
+
+        updateModeUI();
+        renderSidebarList();
         
         if (localStorage.getItem(getStoreKey('index')) && localStorage.getItem(getStoreKey('active_words'))) {
             words = JSON.parse(localStorage.getItem(getStoreKey('active_words')));
             currentIndex = parseInt(localStorage.getItem(getStoreKey('index')));
-            if (localStorage.getItem(getStoreKey('wrong'))) { wrongWordsList = JSON.parse(localStorage.getItem(getStoreKey('wrong'))); }
+            if (localStorage.getItem(getStoreKey('wrong'))) {
+                wrongWordsList = JSON.parse(localStorage.getItem(getStoreKey('wrong')));
+            }
             startTestUI();
         }
     })
-    .catch(error => { 
-        console.error("데이터 로드 실패:", error); 
-        vocaListUI.innerHTML = `<li style="color:red; text-align:center;">${jsonFileName} 파일에 문제가 있습니다. 형식을 확인하세요!</li>`; 
+    .catch(error => {
+        console.error("데이터 로드 실패:", error);
+        vocaListUI.innerHTML = `<li style="color:red; text-align:center;">${jsonFileName} 파일을 찾을 수 없습니다!</li>`;
     });
 
-
+// 📌 한 글자 쪼개기 마법의 함수
 function generateSingleCharWords(sourceWords) {
     const singleCharExcludes = new Set();
     sourceWords.forEach(w => { if (w.chinese.length === 1) singleCharExcludes.add(w.chinese); });
@@ -209,13 +237,15 @@ startTestBtn.addEventListener('click', () => {
 function startTestUI() {
     sidebar.style.display = "none"; welcomeScreen.style.display = "none";
     backBtn.style.display = "inline-block"; progressText.style.display = "inline-block"; shuffleBtn.style.display = "inline-block";
-    wrongContainer.style.display = "block"; renderWrongListUI(); showWord();
+    wrongContainer.style.display = "block";
+    renderWrongListUI(); showWord();
 }
 
 backBtn.addEventListener('click', () => {
     sidebar.style.display = "flex"; welcomeScreen.style.display = "block";
     backBtn.style.display = "none"; progressText.style.display = "none"; shuffleBtn.style.display = "none";
-    chineseText.style.display = "none"; koreanText.style.display = "none"; sourceInfoBox.style.display = "none";
+    chineseText.style.display = "none"; koreanText.style.display = "none"; 
+    if(sourceInfoBox) sourceInfoBox.style.display = "none";
     pinyinInput.style.display = "none"; toneButtons.style.display = "none"; submitBtn.style.display = "none";
     nextBtn.style.display = "none"; forgotHanziBtn.style.display = "none"; endButtons.style.display = "none"; wrongContainer.style.display = "none";
     feedbackMsg.textContent = "";
@@ -233,23 +263,31 @@ function showWord() {
         chineseText.textContent = "학습 완료! 🎉";
         koreanText.style.display = "none"; pinyinInput.style.display = "none"; submitBtn.style.display = "none"; toneButtons.style.display = "none"; 
         nextBtn.style.display = "none"; forgotHanziBtn.style.display = "none"; shuffleBtn.style.display = "none"; progressText.style.display = "none"; feedbackMsg.textContent = "";
-        sourceInfoBox.style.display = "none";
-        endButtons.style.display = "block"; retryWrongBtn.style.display = wrongWordsList.length > 0 ? "inline-block" : "none";
+        if(sourceInfoBox) sourceInfoBox.style.display = "none";
+        endButtons.style.display = "block";
+        retryWrongBtn.style.display = wrongWordsList.length > 0 ? "inline-block" : "none";
         return;
     }
 
     const currentWord = words[currentIndex];
-    sourceInfoBox.style.display = "none"; 
+    if(sourceInfoBox) sourceInfoBox.style.display = "none"; 
     
     if (questionMode === 'ko-to-py') {
-        koreanText.textContent = currentWord.korean; koreanText.style.display = "block"; chineseText.style.display = "none";
+        koreanText.textContent = currentWord.korean;
+        koreanText.style.display = "block";
+        chineseText.style.display = "none";
     } else {
-        chineseText.textContent = currentWord.chinese; chineseText.style.display = "block"; koreanText.style.display = "none";
+        chineseText.textContent = currentWord.chinese;
+        chineseText.style.display = "block";
+        koreanText.style.display = "none";
     }
 
     progressText.textContent = `진행: ${currentIndex + 1} / ${words.length}`;
+    
     appliedTones = []; pinyinInput.value = ""; feedbackMsg.textContent = "";
-    pinyinInput.disabled = false; pinyinInput.style.display = "inline-block"; submitBtn.style.display = "inline-block"; toneButtons.style.display = "flex"; endButtons.style.display = "none"; nextBtn.style.display = "none"; forgotHanziBtn.style.display = "none"; forgotHanziBtn.disabled = false;
+    pinyinInput.disabled = false; pinyinInput.style.display = "inline-block"; submitBtn.style.display = "inline-block"; 
+    toneButtons.style.display = "flex"; endButtons.style.display = "none"; 
+    nextBtn.style.display = "none"; forgotHanziBtn.style.display = "none"; forgotHanziBtn.disabled = false;
     pinyinInput.focus();
 }
 
@@ -316,30 +354,38 @@ function checkAnswer() {
     const correctAnswerTonesRemoved = removeTones(correctRaw);
 
     if (userRaw === correctRaw) { 
-        feedbackMsg.textContent = "정답입니다! 👏"; feedbackMsg.style.color = "green"; 
+        feedbackMsg.textContent = "정답입니다! 👏"; 
+        feedbackMsg.style.color = "green"; 
+        
         wrongWordsList = wrongWordsList.filter(w => w.chinese !== currentWord.chinese);
         localStorage.setItem(getStoreKey('wrong'), JSON.stringify(wrongWordsList));
         renderWrongListUI(); 
         correctAction(currentWord); 
     } 
     else if (userAnswerTonesRemoved === correctAnswerTonesRemoved) { 
-        feedbackMsg.textContent = "성조 틀림! (정답: " + currentWord.pinyin + ")"; feedbackMsg.style.color = "orange"; 
-        forceAddWrong(currentWord); correctAction(currentWord); 
+        feedbackMsg.textContent = "성조 틀림! (정답: " + currentWord.pinyin + ")"; 
+        feedbackMsg.style.color = "orange"; 
+        forceAddWrong(currentWord); 
+        correctAction(currentWord); 
     } 
     else { 
-        feedbackMsg.textContent = "아예 틀림! (정답: " + currentWord.pinyin + ")"; feedbackMsg.style.color = "red"; 
-        forceAddWrong(currentWord); correctAction(currentWord); 
+        feedbackMsg.textContent = "아예 틀림! (정답: " + currentWord.pinyin + ")"; 
+        feedbackMsg.style.color = "red"; 
+        forceAddWrong(currentWord); 
+        correctAction(currentWord); 
     }
 }
 
 function correctAction(currentWord) {
     if (questionMode === 'ko-to-py') {
-        chineseText.textContent = currentWord.chinese; chineseText.style.display = "block";
-    } else if (questionMode === 'zh-to-py') {
-        koreanText.textContent = currentWord.korean; koreanText.style.display = "block"; 
+        chineseText.textContent = currentWord.chinese;
+        chineseText.style.display = "block";
+    } else {
+        koreanText.textContent = currentWord.korean;
+        koreanText.style.display = "block"; 
     }
     
-    if (questionMode === 'single-char' && currentWord.sources) {
+    if (questionMode === 'single-char' && currentWord.sources && sourceInfoBox) {
         let sourceHTML = "<strong>💡 이 글자가 포함된 단어:</strong><br><br>";
         sourceHTML += currentWord.sources.map(s => `• ${s.chinese} (${s.pinyin}) : ${s.korean}`).join('<br>');
         sourceInfoBox.innerHTML = sourceHTML;
@@ -347,13 +393,18 @@ function correctAction(currentWord) {
     }
 
     pinyinInput.disabled = true; submitBtn.style.display = "none"; toneButtons.style.display = "none"; 
-    nextBtn.style.display = "inline-block"; forgotHanziBtn.style.display = "inline-block"; nextBtn.focus();
+    
+    nextBtn.style.display = "inline-block"; 
+    forgotHanziBtn.style.display = "inline-block";
+    nextBtn.focus();
 }
 
 function forceAddWrong(word) {
     let alreadyExists = wrongWordsList.some(w => w.chinese === word.chinese);
     if (!alreadyExists) { 
-        wrongWordsList.push(word); localStorage.setItem(getStoreKey('wrong'), JSON.stringify(wrongWordsList)); renderWrongListUI(); 
+        wrongWordsList.push(word); 
+        localStorage.setItem(getStoreKey('wrong'), JSON.stringify(wrongWordsList));
+        renderWrongListUI(); 
     }
 }
 
@@ -367,7 +418,9 @@ forgotHanziBtn.addEventListener('click', () => {
 function renderWrongListUI() {
     wrongList.innerHTML = ""; 
     wrongWordsList.forEach(word => { 
-        const li = document.createElement('li'); li.innerHTML = `<strong>${word.chinese}</strong> (${word.pinyin}) : ${word.korean}`; wrongList.appendChild(li); 
+        const li = document.createElement('li'); 
+        li.innerHTML = `<strong>${word.chinese}</strong> (${word.pinyin}) : ${word.korean}`; 
+        wrongList.appendChild(li); 
     });
 }
 
@@ -378,5 +431,7 @@ function restartQuiz(wordList) {
 shuffleBtn.addEventListener('click', () => { words = shuffleArray([...words]); currentIndex = 0; localStorage.setItem(getStoreKey('active_words'), JSON.stringify(words)); localStorage.removeItem(getStoreKey('index')); showWord(); });
 document.getElementById('restart-all-btn').addEventListener('click', () => restartQuiz(JSON.parse(localStorage.getItem(getStoreKey('active_words')))));
 document.getElementById('restart-random-btn').addEventListener('click', () => restartQuiz(shuffleArray(JSON.parse(localStorage.getItem(getStoreKey('active_words'))))));
-document.getElementById('retry-wrong-btn').addEventListener('click', () => { words = [...wrongWordsList]; currentIndex = 0; progressText.style.display = "inline-block"; shuffleBtn.style.display = "inline-block"; showWord(); });
+document.getElementById('retry-wrong-btn').addEventListener('click', () => { 
+    words = [...wrongWordsList]; currentIndex = 0; progressText.style.display = "inline-block"; shuffleBtn.style.display = "inline-block"; showWord(); 
+});
 submitBtn.addEventListener('click', checkAnswer); nextBtn.addEventListener('click', () => { currentIndex++; showWord(); }); pinyinInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') submitBtn.click(); });
