@@ -1,13 +1,29 @@
+// 📌 [핵심] 현재 선택된 시험 범위를 확인하고, 없으면 기본값으로 'final(기말고사)' 설정
+const scopeSelect = document.getElementById('scope-select');
+let currentScope = localStorage.getItem('chinese_voca_scope') || 'final';
+scopeSelect.value = currentScope;
+
+// 드롭다운을 변경하면 저장소에 현재 범위를 기록하고 새로고침하여 데이터를 싹 다시 불러옴
+scopeSelect.addEventListener('change', (e) => {
+    localStorage.setItem('chinese_voca_scope', e.target.value);
+    location.reload(); 
+});
+
+// 📌 [핵심] 중간고사와 기말고사 데이터를 완벽히 분리해서 저장해 주는 마법의 열쇠 함수
+function getStoreKey(keyName) {
+    return `cv_${currentScope}_${keyName}`;
+}
+
 let allWords = [];
 let words = [];
 let currentIndex = 0;
 let wrongWordsList = [];
 let appliedTones = []; 
 
-let selectionMode = localStorage.getItem('chinese_voca_mode') || 'exclude';
-
-let excludedWords = JSON.parse(localStorage.getItem('chinese_voca_excluded')) || [];
-let includedWords = JSON.parse(localStorage.getItem('chinese_voca_included')) || [];
+// 저장소 키를 getStoreKey() 함수로 감싸서 각각 독립적으로 저장하고 불러오게 만듦
+let selectionMode = localStorage.getItem(getStoreKey('mode')) || 'exclude';
+let excludedWords = JSON.parse(localStorage.getItem(getStoreKey('excluded'))) || [];
+let includedWords = JSON.parse(localStorage.getItem(getStoreKey('included'))) || [];
 
 function getCurrentList() {
     return selectionMode === 'exclude' ? excludedWords : includedWords;
@@ -16,10 +32,10 @@ function getCurrentList() {
 function updateCurrentList(newList) {
     if (selectionMode === 'exclude') {
         excludedWords = newList;
-        localStorage.setItem('chinese_voca_excluded', JSON.stringify(excludedWords));
+        localStorage.setItem(getStoreKey('excluded'), JSON.stringify(excludedWords));
     } else {
         includedWords = newList;
-        localStorage.setItem('chinese_voca_included', JSON.stringify(includedWords));
+        localStorage.setItem(getStoreKey('included'), JSON.stringify(includedWords));
     }
 }
 
@@ -127,25 +143,46 @@ rangeCheckBtn.addEventListener('click', () => applyRangeSelection(true));
 rangeUncheckBtn.addEventListener('click', () => applyRangeSelection(false));
 
 
-fetch('data.json')
+// 📌 [핵심] 현재 선택된 범위(midterm 또는 final)에 맞는 JSON 파일 이름을 동적으로 생성해서 불러옴
+const jsonFileName = currentScope === 'midterm' ? 'midterm.json' : 'final.json';
+
+fetch(jsonFileName)
     .then(response => response.json())
     .then(data => {
-        allWords = [...data];
+        // 📌 [데이터 자동 정제 마법] 
+        // 새 형식(word, meaning)이 들어오든 구 형식(chinese, korean)이 들어오든 우리가 쓰는 형식으로 자동 변환!
+        allWords = data.map(item => {
+            // 1. 뜻 데이터 가져오기 (korean이 없으면 meaning에서 가져옴)
+            let rawKorean = item.korean || item.meaning; 
+            
+            // 2. 정규식(Regex)을 이용해 같은 AI 출처 꼬리표를 깔끔하게 자동 삭제!
+            let cleanKorean = rawKorean ? rawKorean.replace(/\s*/g, '') : '';
+
+            return {
+                chinese: item.chinese || item.word, // chinese가 없으면 word에서 가져옴
+                pinyin: item.pinyin,
+                korean: cleanKorean
+            };
+        });
+        
         rangeEnd.placeholder = allWords.length;
 
         updateModeUI();
         renderSidebarList();
         
-        if (localStorage.getItem('chinese_voca_index') && localStorage.getItem('chinese_voca_active_words')) {
-            words = JSON.parse(localStorage.getItem('chinese_voca_active_words'));
-            currentIndex = parseInt(localStorage.getItem('chinese_voca_index'));
-            if (localStorage.getItem('chinese_voca_wrong')) {
-                wrongWordsList = JSON.parse(localStorage.getItem('chinese_voca_wrong'));
+        if (localStorage.getItem(getStoreKey('index')) && localStorage.getItem(getStoreKey('active_words'))) {
+            words = JSON.parse(localStorage.getItem(getStoreKey('active_words')));
+            currentIndex = parseInt(localStorage.getItem(getStoreKey('index')));
+            if (localStorage.getItem(getStoreKey('wrong'))) {
+                wrongWordsList = JSON.parse(localStorage.getItem(getStoreKey('wrong')));
             }
             startTestUI();
         }
     })
-    .catch(error => console.error("데이터 로드 실패:", error));
+    .catch(error => {
+        console.error("데이터 로드 실패:", error);
+        vocaListUI.innerHTML = `<li style="color:red; text-align:center;">${jsonFileName} 파일을 찾을 수 없습니다!</li>`;
+    });
 
 
 startTestBtn.addEventListener('click', () => {
@@ -159,9 +196,9 @@ startTestBtn.addEventListener('click', () => {
 
     currentIndex = 0;
     wrongWordsList = [];
-    localStorage.setItem('chinese_voca_active_words', JSON.stringify(words));
-    localStorage.removeItem('chinese_voca_index');
-    localStorage.removeItem('chinese_voca_wrong');
+    localStorage.setItem(getStoreKey('active_words'), JSON.stringify(words));
+    localStorage.removeItem(getStoreKey('index'));
+    localStorage.removeItem(getStoreKey('wrong'));
     wrongList.innerHTML = "";
 
     startTestUI();
@@ -198,19 +235,16 @@ backBtn.addEventListener('click', () => {
     wrongContainer.style.display = "none";
     feedbackMsg.textContent = "";
     
-    localStorage.removeItem('chinese_voca_active_words');
-    localStorage.removeItem('chinese_voca_index');
+    localStorage.removeItem(getStoreKey('active_words'));
+    localStorage.removeItem(getStoreKey('index'));
 });
 
-modeExcludeBtn.addEventListener('click', () => { selectionMode = 'exclude'; localStorage.setItem('chinese_voca_mode', selectionMode); updateModeUI(); renderSidebarList(); });
-modeIncludeBtn.addEventListener('click', () => { selectionMode = 'include'; localStorage.setItem('chinese_voca_mode', selectionMode); updateModeUI(); renderSidebarList(); });
-resetChecksBtn.addEventListener('click', () => { if(confirm("현재 모드에서 체크한 내용을 모두 초기화하시겠습니까?")) { updateCurrentList([]); renderSidebarList(); } });
-
-
-// --- 시험 진행 로직 ---
+modeExcludeBtn.addEventListener('click', () => { selectionMode = 'exclude'; localStorage.setItem(getStoreKey('mode'), selectionMode); updateModeUI(); renderSidebarList(); });
+modeIncludeBtn.addEventListener('click', () => { selectionMode = 'include'; localStorage.setItem(getStoreKey('mode'), selectionMode); updateModeUI(); renderSidebarList(); });
+resetChecksBtn.addEventListener('click', () => { if(confirm("현재 시험 범위에서 체크한 내용을 모두 초기화하시겠습니까?")) { updateCurrentList([]); renderSidebarList(); } });
 
 function showWord() {
-    localStorage.setItem('chinese_voca_index', currentIndex);
+    localStorage.setItem(getStoreKey('index'), currentIndex);
 
     if (currentIndex >= words.length) {
         chineseText.textContent = "학습 완료! 🎉";
@@ -232,15 +266,10 @@ function showWord() {
     pinyinInput.focus();
 }
 
-// 📌 [버그 수정 핵심!] NFD 방식을 버리고, 오직 1~4성 성조만 저격해서 제거하는 방식으로 변경 (ü의 점점 보존)
 function removeTones(str) { 
     return str.toLowerCase()
-              .replace(/[āáǎà]/g, 'a')
-              .replace(/[ēéěè]/g, 'e')
-              .replace(/[ōóǒò]/g, 'o')
-              .replace(/[īíǐì]/g, 'i')
-              .replace(/[ūúǔù]/g, 'u')
-              .replace(/[ǖǘǚǜ]/g, 'ü');
+              .replace(/[āáǎà]/g, 'a').replace(/[ēéěè]/g, 'e').replace(/[ōóǒò]/g, 'o')
+              .replace(/[īíǐì]/g, 'i').replace(/[ūúǔù]/g, 'u').replace(/[ǖǘǚǜ]/g, 'ü');
 }
 
 function shuffleArray(array) {
@@ -266,7 +295,6 @@ function updateInputBox() {
             if (match.includes('ui')) return match.replace('i', toneMarks['i'][t]); 
             if (match.includes('i')) return match.replace('i', toneMarks['i'][t]); 
             if (match.includes('u')) return match.replace('u', toneMarks['u'][t]); 
-            // 📌 이제 ü가 안전하게 살아있으므로 정상 작동함
             if (match.includes('ü')) return match.replace('ü', toneMarks['ü'][t]);
         }
         return match;
@@ -308,7 +336,7 @@ function checkAnswer() {
         feedbackMsg.style.color = "green"; 
         
         wrongWordsList = wrongWordsList.filter(w => w.chinese !== currentWord.chinese);
-        localStorage.setItem('chinese_voca_wrong', JSON.stringify(wrongWordsList));
+        localStorage.setItem(getStoreKey('wrong'), JSON.stringify(wrongWordsList));
         renderWrongListUI(); 
 
         correctAction(currentWord); 
@@ -333,7 +361,7 @@ function addToWrongList(word) {
     let alreadyExists = wrongWordsList.some(w => w.chinese === word.chinese);
     if (!alreadyExists) { 
         wrongWordsList.push(word); 
-        localStorage.setItem('chinese_voca_wrong', JSON.stringify(wrongWordsList));
+        localStorage.setItem(getStoreKey('wrong'), JSON.stringify(wrongWordsList));
         renderWrongListUI(); 
     }
     correctAction(word);
@@ -349,12 +377,12 @@ function renderWrongListUI() {
 }
 
 function restartQuiz(wordList) {
-    words = [...wordList]; wrongWordsList = []; localStorage.setItem('chinese_voca_active_words', JSON.stringify(words)); localStorage.removeItem('chinese_voca_index'); localStorage.removeItem('chinese_voca_wrong'); wrongList.innerHTML = ""; currentIndex = 0; progressText.style.display = "inline-block"; shuffleBtn.style.display = "inline-block"; chineseText.style.display = "block"; showWord();
+    words = [...wordList]; wrongWordsList = []; localStorage.setItem(getStoreKey('active_words'), JSON.stringify(words)); localStorage.removeItem(getStoreKey('index')); localStorage.removeItem(getStoreKey('wrong')); wrongList.innerHTML = ""; currentIndex = 0; progressText.style.display = "inline-block"; shuffleBtn.style.display = "inline-block"; chineseText.style.display = "block"; showWord();
 }
 
-shuffleBtn.addEventListener('click', () => { words = shuffleArray([...words]); currentIndex = 0; localStorage.setItem('chinese_voca_active_words', JSON.stringify(words)); localStorage.removeItem('chinese_voca_index'); showWord(); });
-document.getElementById('restart-all-btn').addEventListener('click', () => restartQuiz(JSON.parse(localStorage.getItem('chinese_voca_active_words'))));
-document.getElementById('restart-random-btn').addEventListener('click', () => restartQuiz(shuffleArray(JSON.parse(localStorage.getItem('chinese_voca_active_words')))));
+shuffleBtn.addEventListener('click', () => { words = shuffleArray([...words]); currentIndex = 0; localStorage.setItem(getStoreKey('active_words'), JSON.stringify(words)); localStorage.removeItem(getStoreKey('index')); showWord(); });
+document.getElementById('restart-all-btn').addEventListener('click', () => restartQuiz(JSON.parse(localStorage.getItem(getStoreKey('active_words')))));
+document.getElementById('restart-random-btn').addEventListener('click', () => restartQuiz(shuffleArray(JSON.parse(localStorage.getItem(getStoreKey('active_words'))))));
 document.getElementById('retry-wrong-btn').addEventListener('click', () => { 
     words = [...wrongWordsList]; 
     currentIndex = 0; 

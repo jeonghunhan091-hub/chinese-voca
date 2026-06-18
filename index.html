@@ -8,7 +8,12 @@
         .app-container { display: flex; gap: 20px; max-width: 1000px; width: 100%; align-items: flex-start; }
         
         #sidebar { background: white; border-radius: 15px; padding: 20px; width: 350px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; max-height: 85vh; }
-        #sidebar h3 { margin-top: 0; text-align: center; color: #333; }
+        
+        /* 📌 시험 범위 선택 드롭다운 디자인 */
+        #scope-select { width: 100%; padding: 10px; font-size: 1.1rem; font-weight: bold; border: 2px solid #2196F3; border-radius: 5px; color: #1976D2; cursor: pointer; margin-bottom: 15px; background-color: #e3f2fd; text-align: center; }
+        #scope-select:focus { outline: none; border-color: #1565C0; }
+
+        #sidebar h3 { margin-top: 0; text-align: center; color: #333; font-size: 1.1rem; }
         
         .mode-toggles { display: flex; gap: 5px; margin-bottom: 10px; }
         .mode-btn { flex: 1; padding: 8px; font-size: 0.85rem; border: 1px solid #ccc; background-color: #f9f9f9; cursor: pointer; border-radius: 5px; }
@@ -18,7 +23,6 @@
         #reset-checks-btn { font-size: 0.8rem; padding: 5px 10px; background-color: #757575; color: white; border: none; border-radius: 3px; cursor: pointer; }
         #reset-checks-btn:hover { background-color: #616161; }
 
-        /* 📌 범위 설정 영역 디자인 추가 */
         .range-selector { display: flex; align-items: center; gap: 5px; margin-bottom: 10px; padding: 10px; background-color: #f0f8ff; border-radius: 5px; border: 1px solid #bbdefb; font-size: 0.85rem; justify-content: space-between; }
         .range-selector input[type="number"] { width: 45px; padding: 5px; border: 1px solid #ccc; border-radius: 3px; text-align: center; }
         .range-btn-group { display: flex; gap: 3px; }
@@ -78,6 +82,11 @@
 
     <div class="app-container">
         <aside id="sidebar">
+            <select id="scope-select">
+                <option value="final">기말고사 범위</option>
+                <option value="midterm">중간고사 범위</option>
+            </select>
+
             <h3>📝 단어장 관리</h3>
             
             <div class="mode-toggles">
