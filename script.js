@@ -7,7 +7,6 @@ scopeSelect.addEventListener('change', (e) => {
     location.reload(); 
 });
 
-// 📌 출제 모드 상태 가져오기 및 이벤트
 const qmodeSelect = document.getElementById('qmode-select');
 let questionMode = localStorage.getItem('chinese_voca_qmode') || 'zh-to-py';
 qmodeSelect.value = questionMode;
@@ -15,7 +14,6 @@ qmodeSelect.value = questionMode;
 qmodeSelect.addEventListener('change', (e) => {
     questionMode = e.target.value;
     localStorage.setItem('chinese_voca_qmode', questionMode);
-    // 시험 도중에 바꾸면 현재 단어 화면도 즉시 모드에 맞게 업데이트
     if (words.length > 0 && currentIndex < words.length) showWord(); 
 });
 
@@ -67,8 +65,9 @@ const koreanText = document.getElementById('korean-text');
 const pinyinInput = document.getElementById('pinyin-input');
 const submitBtn = document.getElementById('submit-btn');
 const nextBtn = document.getElementById('next-btn');
-const forgotHanziBtn = document.getElementById('forgot-hanzi-btn'); // 📌 신규 버튼
+const forgotHanziBtn = document.getElementById('forgot-hanzi-btn');
 const feedbackMsg = document.getElementById('feedback-msg');
+const sourceInfoBox = document.getElementById('source-info-box'); // 📌 출처 박스
 const wrongList = document.getElementById('wrong-list');
 const toneButtons = document.getElementById('tone-buttons');
 const endButtons = document.getElementById('end-buttons');
@@ -169,12 +168,64 @@ fetch(jsonFileName)
         vocaListUI.innerHTML = `<li style="color:red; text-align:center;">${jsonFileName} 파일을 찾을 수 없습니다!</li>`;
     });
 
+// 📌 [복구됨] 한 글자 쪼개기 마법의 함수
+function generateSingleCharWords(sourceWords) {
+    const singleCharExcludes = new Set();
+    sourceWords.forEach(w => { if (w.chinese.length === 1) singleCharExcludes.add(w.chinese); });
+
+    const charMap = new Map();
+    const syllableRegex = /([bpmfdtnlgkhjqxrzcsyw]*[aāáǎàeēéěèoōóǒòiīíǐìuūúǔùüǖǘǚǜ]+(?:ng|n|r)?)/ig;
+
+    sourceWords.forEach(wordObj => {
+        if (wordObj.chinese.length > 1) {
+            let pinyinStr = wordObj.pinyin.replace(/['’`′]/g, '');
+            let syllables = pinyinStr.includes(' ') ? pinyinStr.split(/\s+/) : (pinyinStr.match(syllableRegex) || []);
+
+            if (syllables.length === wordObj.chinese.length) {
+                for (let i = 0; i < wordObj.chinese.length; i++) {
+                    let char = wordObj.chinese[i];
+                    let py = syllables[i];
+
+                    if (singleCharExcludes.has(char)) continue;
+
+                    if (!charMap.has(char)) {
+                        charMap.set(char, {
+                            chinese: char,
+                            pinyin: py.toLowerCase(),
+                            korean: "한 글자 병음 맞추기", 
+                            sources: [] 
+                        });
+                    }
+                    
+                    const entry = charMap.get(char);
+                    if (!entry.sources.some(s => s.chinese === wordObj.chinese)) {
+                        entry.sources.push(wordObj);
+                    }
+                }
+            }
+        }
+    });
+    
+    return Array.from(charMap.values());
+}
 
 startTestBtn.addEventListener('click', () => {
-    if (selectionMode === 'exclude') words = allWords.filter(w => !excludedWords.includes(w.chinese));
-    else words = allWords.filter(w => includedWords.includes(w.chinese));
+    let selectedWords = [];
+    if (selectionMode === 'exclude') selectedWords = allWords.filter(w => !excludedWords.includes(w.chinese));
+    else selectedWords = allWords.filter(w => includedWords.includes(w.chinese));
 
-    if (words.length === 0) { alert("선택된 시험 단어가 없습니다! 설정을 확인해 주세요."); return; }
+    if (selectedWords.length === 0) { alert("선택된 시험 단어가 없습니다! 설정을 확인해 주세요."); return; }
+
+    // 📌 [복구됨] 쪼개기 모드일 경우 데이터를 가공해서 시험 배열로 세팅
+    if (questionMode === 'single-char') {
+        words = generateSingleCharWords(selectedWords);
+        if (words.length === 0) {
+            alert("조건에 맞는 한 글자 단어가 없습니다! (선택한 단어가 모두 1글자이거나 분리할 수 없음)");
+            return;
+        }
+    } else {
+        words = [...selectedWords];
+    }
 
     currentIndex = 0; wrongWordsList = [];
     localStorage.setItem(getStoreKey('active_words'), JSON.stringify(words));
@@ -193,7 +244,7 @@ function startTestUI() {
 backBtn.addEventListener('click', () => {
     sidebar.style.display = "flex"; welcomeScreen.style.display = "block";
     backBtn.style.display = "none"; progressText.style.display = "none"; shuffleBtn.style.display = "none";
-    chineseText.style.display = "none"; koreanText.style.display = "none";
+    chineseText.style.display = "none"; koreanText.style.display = "none"; sourceInfoBox.style.display = "none";
     pinyinInput.style.display = "none"; toneButtons.style.display = "none"; submitBtn.style.display = "none";
     nextBtn.style.display = "none"; forgotHanziBtn.style.display = "none"; endButtons.style.display = "none"; wrongContainer.style.display = "none";
     feedbackMsg.textContent = "";
@@ -211,22 +262,24 @@ function showWord() {
         chineseText.textContent = "학습 완료! 🎉";
         koreanText.style.display = "none"; pinyinInput.style.display = "none"; submitBtn.style.display = "none"; toneButtons.style.display = "none"; 
         nextBtn.style.display = "none"; forgotHanziBtn.style.display = "none"; shuffleBtn.style.display = "none"; progressText.style.display = "none"; feedbackMsg.textContent = "";
+        sourceInfoBox.style.display = "none";
         endButtons.style.display = "block";
         retryWrongBtn.style.display = wrongWordsList.length > 0 ? "inline-block" : "none";
         return;
     }
 
     const currentWord = words[currentIndex];
+    sourceInfoBox.style.display = "none"; 
     
     // 📌 [모드별 디스플레이 분기]
-    if (questionMode === 'zh-to-py') {
-        chineseText.textContent = currentWord.chinese;
-        chineseText.style.display = "block";
-        koreanText.style.display = "none";
-    } else {
+    if (questionMode === 'ko-to-py') {
         koreanText.textContent = currentWord.korean;
         koreanText.style.display = "block";
         chineseText.style.display = "none";
+    } else {
+        chineseText.textContent = currentWord.chinese;
+        chineseText.style.display = "block";
+        koreanText.style.display = "none";
     }
 
     progressText.textContent = `진행: ${currentIndex + 1} / ${words.length}`;
@@ -300,6 +353,7 @@ function checkAnswer() {
     const userAnswerTonesRemoved = removeTones(userRaw);
     const correctAnswerTonesRemoved = removeTones(correctRaw);
 
+    // 📌 [복구됨] 깔끔해진 채점 로직
     if (userRaw === correctRaw) { 
         feedbackMsg.textContent = "정답입니다! 👏"; 
         feedbackMsg.style.color = "green"; 
@@ -324,24 +378,29 @@ function checkAnswer() {
 }
 
 function correctAction(currentWord) {
-    // 📌 [모드별 정답 확인 시 숨겨진 텍스트 표시]
-    if (questionMode === 'zh-to-py') {
-        koreanText.textContent = currentWord.korean;
-        koreanText.style.display = "block"; 
-    } else {
+    if (questionMode === 'ko-to-py') {
         chineseText.textContent = currentWord.chinese;
         chineseText.style.display = "block";
+    } else {
+        koreanText.textContent = currentWord.korean;
+        koreanText.style.display = "block"; 
+    }
+    
+    // 📌 [복구됨] 한 글자 쪼개기 모드일 때 출처 박스 띄우기
+    if (questionMode === 'single-char' && currentWord.sources) {
+        let sourceHTML = "<strong>💡 이 글자가 포함된 단어:</strong><br><br>";
+        sourceHTML += currentWord.sources.map(s => `• ${s.chinese} (${s.pinyin}) : ${s.korean}`).join('<br>');
+        sourceInfoBox.innerHTML = sourceHTML;
+        sourceInfoBox.style.display = "block";
     }
 
     pinyinInput.disabled = true; submitBtn.style.display = "none"; toneButtons.style.display = "none"; 
     
-    // 📌 다음 단어 & 한자 모름 버튼 표시
     nextBtn.style.display = "inline-block"; 
     forgotHanziBtn.style.display = "inline-block";
     nextBtn.focus();
 }
 
-// 📌 [신규] 오답 노트에 강제 추가하는 내부 함수
 function forceAddWrong(word) {
     let alreadyExists = wrongWordsList.some(w => w.chinese === word.chinese);
     if (!alreadyExists) { 
@@ -351,12 +410,11 @@ function forceAddWrong(word) {
     }
 }
 
-// 📌 [신규] "한자 기억 안 남" 버튼 클릭 시
 forgotHanziBtn.addEventListener('click', () => {
     forceAddWrong(words[currentIndex]);
     feedbackMsg.textContent = "한자 오답: 오답 노트에 추가되었습니다!";
-    feedbackMsg.style.color = "#FF9800";
-    forgotHanziBtn.disabled = true; // 중복 클릭 방지
+    feedbackMsg.style.color = "#9C27B0";
+    forgotHanziBtn.disabled = true; 
 });
 
 function renderWrongListUI() {
