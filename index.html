@@ -9,11 +9,12 @@
         
         #sidebar { background: white; border-radius: 15px; padding: 20px; width: 350px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; max-height: 85vh; }
         
-        /* 📌 시험 범위 선택 드롭다운 디자인 */
-        #scope-select { width: 100%; padding: 10px; font-size: 1.1rem; font-weight: bold; border: 2px solid #2196F3; border-radius: 5px; color: #1976D2; cursor: pointer; margin-bottom: 15px; background-color: #e3f2fd; text-align: center; }
-        #scope-select:focus { outline: none; border-color: #1565C0; }
+        #scope-select, #qmode-select { width: 100%; padding: 10px; font-size: 1.05rem; font-weight: bold; border: 2px solid #2196F3; border-radius: 5px; cursor: pointer; margin-bottom: 10px; text-align: center; }
+        #scope-select { color: #1976D2; background-color: #e3f2fd; }
+        #qmode-select { color: #388E3C; background-color: #E8F5E9; border-color: #4CAF50; }
+        #scope-select:focus, #qmode-select:focus { outline: none; }
 
-        #sidebar h3 { margin-top: 0; text-align: center; color: #333; font-size: 1.1rem; }
+        #sidebar h3 { margin-top: 10px; text-align: center; color: #333; font-size: 1.1rem; border-top: 1px solid #eee; padding-top: 15px; }
         
         .mode-toggles { display: flex; gap: 5px; margin-bottom: 10px; }
         .mode-btn { flex: 1; padding: 8px; font-size: 0.85rem; border: 1px solid #ccc; background-color: #f9f9f9; cursor: pointer; border-radius: 5px; }
@@ -28,9 +29,7 @@
         .range-btn-group { display: flex; gap: 3px; }
         .range-selector button { padding: 5px 10px; font-size: 0.8rem; cursor: pointer; border: none; border-radius: 3px; color: white; font-weight: bold; }
         #range-check-btn { background-color: #4CAF50; }
-        #range-check-btn:hover { background-color: #388E3C; }
         #range-uncheck-btn { background-color: #f44336; }
-        #range-uncheck-btn:hover { background-color: #d32f2f; }
 
         #voca-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex-grow: 1; border: 1px solid #eee; border-radius: 5px; padding: 10px; }
         #voca-list li { padding: 5px 0; border-bottom: 1px dashed #eee; font-size: 0.95rem; display: flex; align-items: center; gap: 10px; cursor: pointer; }
@@ -42,7 +41,7 @@
         #start-test-btn:hover { background-color: #E64A19; }
 
         #main-content { flex: 1; display: flex; flex-direction: column; align-items: center; }
-        .card { position: relative; background: white; border-radius: 15px; padding: 40px 30px 30px 30px; width: 380px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
+        .card { position: relative; background: white; border-radius: 15px; padding: 40px 30px 30px 30px; width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
         
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         #back-btn { font-size: 0.85rem; padding: 5px 10px; background-color: #607D8B; color: white; border: none; border-radius: 5px; cursor: pointer; display: none; }
@@ -50,7 +49,7 @@
         #shuffle-btn { font-size: 0.8rem; padding: 5px 10px; background-color: #9E9E9E; color: white; border: none; border-radius: 5px; cursor: pointer; display: none; }
 
         #chinese-text { color: #333; margin-top: 10px; margin-bottom: 15px; font-size: 3.5rem; }
-        #korean-text { color: #1976D2; margin-top: 0; font-size: 1.5rem; display: none; }
+        #korean-text { color: #1976D2; margin-top: 10px; margin-bottom: 15px; font-size: 1.8rem; }
         
         input[type="text"] { font-size: 1.2rem; padding: 10px; width: 80%; margin: 10px 0 20px 0; border: 2px solid #ddd; border-radius: 5px; text-align: center; }
         
@@ -62,15 +61,24 @@
         .tone-btn:hover { background-color: #e0e0e0; }
         #delete-btn { background-color: #ff5252; color: white; border: 1px solid #ff5252; font-weight: bold; }
         
+        .action-buttons { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+        #next-btn { background-color: #2196F3; display: none; }
+        #forgot-hanzi-btn { background-color: #9C27B0; display: none; font-size: 0.9rem; }
+        #forgot-hanzi-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+
         #end-buttons { display: none; margin-top: 15px; }
         #end-buttons button { margin: 5px; font-size: 0.9rem; }
         #restart-all-btn { background-color: #ff9800; }
         #restart-random-btn { background-color: #9C27B0; color: white; }
         #retry-wrong-btn { background-color: #f44336; color: white; }
 
-        .feedback { font-size: 1.1rem; font-weight: bold; margin: 15px 0; min-height: 25px; }
+        .feedback { font-size: 1.1rem; font-weight: bold; margin: 15px 0 5px 0; min-height: 25px; }
         
-        .wrong-words-container { margin-top: 20px; background: #fff; width: 380px; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: none; }
+        /* 📌 출처 표시 박스 디자인 추가 */
+        #source-info-box { display: none; margin-top: 15px; padding: 15px; background-color: #FFF9C4; border: 1px solid #FBC02D; border-radius: 8px; text-align: left; font-size: 0.95rem; color: #333; line-height: 1.5; }
+        #source-info-box strong { color: #E65100; }
+
+        .wrong-words-container { margin-top: 20px; background: #fff; width: 400px; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: none; }
         .wrong-words-container h3 { color: #d32f2f; margin-top: 0; border-bottom: 2px solid #d32f2f; padding-bottom: 10px;}
         ul.wrong-list { list-style-type: none; padding: 0; text-align: left; }
         ul.wrong-list li { padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 1.1rem; }
@@ -85,6 +93,13 @@
             <select id="scope-select">
                 <option value="final">기말고사 범위</option>
                 <option value="midterm">중간고사 범위</option>
+            </select>
+
+            <select id="qmode-select">
+                <option value="zh-to-py">문제: 한자 보고 병음 맞추기</option>
+                <option value="ko-to-py">문제: 뜻 보고 병음 맞추기</option>
+                <!-- 📌 한 글자 쪼개기 모드 추가 -->
+                <option value="single-char">🔥 문제: 한 글자씩 쪼개서 맞추기</option>
             </select>
 
             <h3>📝 단어장 관리</h3>
@@ -128,7 +143,7 @@
                 </div>
 
                 <h2 id="chinese-text" style="display: none;">로딩 중...</h2>
-                <h1 id="korean-text"></h1>
+                <h1 id="korean-text" style="display: none;">로딩 중...</h1>
 
                 <input type="text" id="pinyin-input" placeholder="병음 입력" autocomplete="off" style="display: none;">
                 
@@ -142,15 +157,22 @@
                 </div>
 
                 <button id="submit-btn" style="display: none;">확인</button>
-                <button id="next-btn" style="display: none; background-color: #2196F3;">다음 단어</button>
+                
+                <p id="feedback-msg" class="feedback"></p>
+
+                <!-- 📌 출처 표시 박스 -->
+                <div id="source-info-box"></div>
+
+                <div class="action-buttons">
+                    <button id="next-btn">다음 단어</button>
+                    <button id="forgot-hanzi-btn">🤔 한자 기억 안 남 (오답 추가)</button>
+                </div>
                 
                 <div id="end-buttons">
                     <button id="restart-all-btn">🔄 이 설정대로 처음부터</button>
                     <button id="restart-random-btn">🔀 랜덤 시작</button>
                     <button id="retry-wrong-btn">🚨 틀린 단어만</button>
                 </div>
-
-                <p id="feedback-msg" class="feedback"></p>
             </div>
 
             <div class="wrong-words-container" id="wrong-container">
