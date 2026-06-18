@@ -16,7 +16,7 @@ function getCurrentList() {
 function updateCurrentList(newList) {
     if (selectionMode === 'exclude') {
         excludedWords = newList;
-        localStorage.setItem('chinese_voca_exclude', JSON.stringify(excludedWords));
+        localStorage.setItem('chinese_voca_excluded', JSON.stringify(excludedWords));
     } else {
         includedWords = newList;
         localStorage.setItem('chinese_voca_included', JSON.stringify(includedWords));
@@ -232,11 +232,15 @@ function showWord() {
     pinyinInput.focus();
 }
 
-// 순수 성조 기호만 지워주는 함수 (격음 부호는 건드리지 않음)
+// 📌 [버그 수정 핵심!] NFD 방식을 버리고, 오직 1~4성 성조만 저격해서 제거하는 방식으로 변경 (ü의 점점 보존)
 function removeTones(str) { 
-    return str.normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .toLowerCase();
+    return str.toLowerCase()
+              .replace(/[āáǎà]/g, 'a')
+              .replace(/[ēéěè]/g, 'e')
+              .replace(/[ōóǒò]/g, 'o')
+              .replace(/[īíǐì]/g, 'i')
+              .replace(/[ūúǔù]/g, 'u')
+              .replace(/[ǖǘǚǜ]/g, 'ü');
 }
 
 function shuffleArray(array) {
@@ -246,7 +250,6 @@ function shuffleArray(array) {
 }
 
 function updateInputBox() {
-    // 📌 [수정] 사용자가 어떤 종류의 따옴표나 격음 부호를 입력하더라도 표준 기호(')로 통일해서 유지함
     let raw = removeTones(pinyinInput.value).replace(/v/g, 'ü').replace(/[’`′]/g, "'");
     let cursorPosition = pinyinInput.selectionStart;
     let toneIndex = 0;
@@ -263,6 +266,7 @@ function updateInputBox() {
             if (match.includes('ui')) return match.replace('i', toneMarks['i'][t]); 
             if (match.includes('i')) return match.replace('i', toneMarks['i'][t]); 
             if (match.includes('u')) return match.replace('u', toneMarks['u'][t]); 
+            // 📌 이제 ü가 안전하게 살아있으므로 정상 작동함
             if (match.includes('ü')) return match.replace('ü', toneMarks['ü'][t]);
         }
         return match;
@@ -293,7 +297,6 @@ deleteBtn.addEventListener('click', () => { if (appliedTones.length > 0) { appli
 function checkAnswer() {
     const currentWord = words[currentIndex];
     
-    // 📌 [수정] 채점할 때 양쪽 데이터 모두 공백을 제거하고 격음 부호 형태를 표준(')으로 통일함
     const userRaw = pinyinInput.value.trim().toLowerCase().replace(/\s/g, '').replace(/[’`′]/g, "'");
     const correctRaw = currentWord.pinyin.toLowerCase().replace(/\s/g, '').replace(/[’`′]/g, "'");
 
@@ -304,10 +307,9 @@ function checkAnswer() {
         feedbackMsg.textContent = "정답입니다! 👏"; 
         feedbackMsg.style.color = "green"; 
         
-        // 📌 [추가] 맞았을 경우 오답 리스트(wrongWordsList)에서 이 단어를 실시간으로 삭제!
         wrongWordsList = wrongWordsList.filter(w => w.chinese !== currentWord.chinese);
         localStorage.setItem('chinese_voca_wrong', JSON.stringify(wrongWordsList));
-        renderWrongListUI(); // 오답 창 리스트 즉시 새로고침
+        renderWrongListUI(); 
 
         correctAction(currentWord); 
     } 
