@@ -145,7 +145,7 @@ fetch(jsonFileName)
     .then(data => {
         allWords = data.map(item => {
             let rawKorean = item.korean || item.meaning; 
-            let cleanKorean = rawKorean ? rawKorean.replace(/\s*\/g, '') : '';
+            let cleanKorean = rawKorean ? rawKorean.replace(/\s*/g, '') : '';
             return { chinese: item.chinese || item.word, pinyin: item.pinyin, korean: cleanKorean };
         });
         
