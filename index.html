@@ -31,11 +31,18 @@
         #range-check-btn { background-color: #4CAF50; }
         #range-uncheck-btn { background-color: #f44336; }
 
+        /* 📌 오답노트 전용 수동 추가 폼 스타일 */
+        .wrong-add-selector { display: none; flex-direction: column; gap: 5px; margin-bottom: 10px; padding: 10px; background-color: #f3e5f5; border-radius: 5px; border: 1px solid #e1bee7; font-size: 0.85rem; }
+        .wrong-add-inputs { display: flex; gap: 3px; }
+        .wrong-add-inputs input { flex: 1; padding: 5px; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 3px; }
+        #add-custom-wrong-btn { width: 100%; padding: 6px; font-size: 0.85rem; background-color: #9C27B0; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; margin-top: 3px; }
+
         #voca-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex-grow: 1; border: 1px solid #eee; border-radius: 5px; padding: 10px; }
         #voca-list li { padding: 5px 0; border-bottom: 1px dashed #eee; font-size: 0.95rem; display: flex; align-items: center; gap: 10px; cursor: pointer; }
         #voca-list li:hover { background-color: #f1f1f1; }
         #voca-list input[type="checkbox"] { transform: scale(1.2); cursor: pointer; }
         .word-index { color: #888; font-size: 0.85rem; min-width: 20px; display: inline-block; }
+        .delete-wrong-item-btn { background-color: #ff5252; color: white; border: none; padding: 2px 6px; font-size: 0.75rem; border-radius: 3px; cursor: pointer; font-weight: bold; }
 
         #start-test-btn { margin-top: 15px; background-color: #FF5722; color: white; border: none; padding: 15px; font-size: 1.1rem; font-weight: bold; border-radius: 5px; cursor: pointer; }
         #start-test-btn:hover { background-color: #E64A19; }
@@ -74,13 +81,16 @@
 
         .feedback { font-size: 1.1rem; font-weight: bold; margin: 15px 0 5px 0; min-height: 25px; }
         
-        /* 📌 출처 표시 박스 디자인 스타일 추가 */
         #source-info-box { display: none; margin-top: 15px; padding: 15px; background-color: #FFF9C4; border: 1px solid #FBC02D; border-radius: 8px; text-align: left; font-size: 0.95rem; color: #333; line-height: 1.5; }
         #source-info-box strong { color: #E65100; }
 
         .wrong-words-container { margin-top: 20px; background: #fff; width: 400px; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: none; }
-        .wrong-words-container h3 { color: #d32f2f; margin-top: 0; border-bottom: 2px solid #d32f2f; padding-bottom: 10px;}
-        ul.wrong-list { list-style-type: none; padding: 0; text-align: left; }
+        .wrong-words-header-flex { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #d32f2f; padding-bottom: 10px; margin-bottom: 10px; }
+        .wrong-words-container h3 { color: #d32f2f; margin: 0; font-size: 1.15rem; }
+        #save-wrong-btn { background-color: #2196F3; color: white; font-size: 0.8rem; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        #save-wrong-btn:hover { background-color: #1976D2; }
+        
+        ul.wrong-list { list-style-type: none; padding: 0; text-align: left; margin: 0; }
         ul.wrong-list li { padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 1.1rem; }
         
         #welcome-screen { text-align: center; color: #555; padding: 50px 0; }
@@ -99,20 +109,21 @@
                 <option value="zh-to-py">문제: 한자 보고 병음 맞추기</option>
                 <option value="ko-to-py">문제: 뜻 보고 병음 맞추기</option>
                 <option value="single-char">🔥 문제: 한 글자씩 쪼개서 맞추기</option>
+                <option value="saved-wrong">📁 저장된 오답노트 관리/시험</option>
             </select>
 
-            <h3>📝 단어장 관리</h3>
+            <h3 id="sidebar-title">📝 단어장 관리</h3>
             
-            <div class="mode-toggles">
+            <div class="mode-toggles" id="sidebar-toggles">
                 <button class="mode-btn active" id="mode-exclude-btn">제외할 단어 선택</button>
                 <button class="mode-btn" id="mode-include-btn">시험 볼 단어 선택</button>
             </div>
             
-            <div class="reset-btn-container">
+            <div class="reset-btn-container" id="sidebar-reset-container">
                 <button id="reset-checks-btn">🔄 체크 전체 초기화</button>
             </div>
 
-            <div class="range-selector">
+            <div class="range-selector" id="sidebar-range-selector">
                 <div>
                     <input type="number" id="range-start" placeholder="1" min="1">
                     <span>~</span>
@@ -122,6 +133,15 @@
                     <button id="range-check-btn">✔ 체크</button>
                     <button id="range-uncheck-btn">✖ 해제</button>
                 </div>
+            </div>
+
+            <div class="wrong-add-selector" id="sidebar-wrong-add-selector">
+                <div class="wrong-add-inputs">
+                    <input type="text" id="add-wrong-zh" placeholder="한자 (ex. 上海)" autocomplete="off">
+                    <input type="text" id="add-wrong-py" placeholder="병음 (ex. Shànghǎi)" autocomplete="off">
+                    <input type="text" id="add-wrong-ko" placeholder="뜻 (ex. 상하이)" autocomplete="off">
+                </div>
+                <button id="add-custom-wrong-btn">➕ 오답노트에 단어 추가</button>
             </div>
 
             <ul id="voca-list"></ul>
@@ -174,7 +194,10 @@
             </div>
 
             <div class="wrong-words-container" id="wrong-container">
-                <h3>🚨 오답 노트 (틀린 단어장)</h3>
+                <div class="wrong-words-header-flex">
+                    <h3>🚨 오답 노트 (틀린 단어장)</h3>
+                    <button id="save-wrong-btn">💾 영구 오답노트에 저장</button>
+                </div>
                 <ul class="wrong-list" id="wrong-list"></ul>
             </div>
         </main>
