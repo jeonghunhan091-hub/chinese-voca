@@ -11,45 +11,35 @@ const qmodeSelect = document.getElementById('qmode-select');
 let questionMode = localStorage.getItem('chinese_voca_qmode') || 'zh-to-py';
 qmodeSelect.value = questionMode;
 
-// 📌 모드가 바뀌면 리스트를 새로 그려야 하므로 새로고침으로 깔끔하게 상태 리셋
 qmodeSelect.addEventListener('change', (e) => {
     questionMode = e.target.value;
     localStorage.setItem('chinese_voca_qmode', questionMode);
     location.reload(); 
 });
 
-// 📌 [핵심 1] 일반 모드와 쪼개기 모드의 체크박스 저장 공간을 완벽히 분리
 const modePrefix = questionMode === 'single-char' ? 'single' : 'normal';
 function getStoreKey(keyName) {
     return `cv_${currentScope}_${modePrefix}_${keyName}`;
 }
 
-// 📌 [핵심 2] 원래 성조 복구 사전 (Tone Sandhi Fix)
-// 합쳐지며 성조가 바뀌는 대표적인 글자들의 본래 성조를 입력해 둡니다. 
-// 필요한 글자가 있다면 여기에 '한자': '원래병음' 형식으로 언제든 추가하면 됩니다!
+// 📌 [신규] 중간/기말별로 완벽히 분리된 영구 오답노트 저장 키 생성 함수
+function getSavedWrongKey() {
+    return `cv_${currentScope}_permanently_saved_wrong`;
+}
+
 const originalToneDictionary = {
-    '一': 'yī', 
-    '不': 'bù', 
-    '很': 'hěn', 
-    '好': 'hǎo', 
-    '你': 'nǐ', 
-    '我': 'wǒ', 
-    '也': 'yě', 
-    '老': 'lǎo', 
-    '买': 'mǎi', 
-    '水': 'shuǐ', 
-    '果': 'guǒ',
-    '小': 'xiǎo',
-    '可': 'kě',
-    '以': 'yǐ'
+    '一': 'yī', '不': 'bù', '해': 'hěn', '好': 'hǎo', '你': 'nǐ', '我': 'wǒ', '也': 'yě', '老': 'lǎo', '买': 'mǎi', '水': 'shuǐ', '果': 'guǒ', '小': 'xiǎo', '可': 'kě', '以': 'yǐ'
 };
 
 let allWords = [];
-let displayWords = []; // 화면(사이드바)에 띄울 실제 단어 목록
+let displayWords = []; 
 let words = [];
 let currentIndex = 0;
 let wrongWordsList = [];
 let appliedTones = []; 
+
+// 📌 [신규] 영구 보관용 오답 데이터 배열 불러오기
+let savedWrongWords = JSON.parse(localStorage.getItem(getSavedWrongKey())) || [];
 
 let selectionMode = localStorage.getItem(getStoreKey('mode')) || 'exclude';
 let excludedWords = JSON.parse(localStorage.getItem(getStoreKey('excluded'))) || [];
@@ -75,6 +65,19 @@ const rangeStart = document.getElementById('range-start');
 const rangeEnd = document.getElementById('range-end');
 const rangeCheckBtn = document.getElementById('range-check-btn');
 const rangeUncheckBtn = document.getElementById('range-uncheck-btn');
+
+// 오답 전용 DOM UI
+const sidebarTitle = document.getElementById('sidebar-title');
+const sidebarToggles = document.getElementById('sidebar-toggles');
+const sidebarResetContainer = document.getElementById('sidebar-reset-container');
+const sidebarRangeSelector = document.getElementById('sidebar-range-selector');
+const sidebarWrongAddSelector = document.getElementById('sidebar-wrong-add-selector');
+const saveWrongBtn = document.getElementById('save-wrong-btn');
+const addWrongZh = document.getElementById('add-wrong-zh');
+const addWrongPy = document.getElementById('add-wrong-py');
+const addWrongKo = document.getElementById('add-wrong-ko');
+const addCustomWrongBtn = document.getElementById('add-custom-wrong-btn');
+
 const welcomeScreen = document.getElementById('welcome-screen');
 const backBtn = document.getElementById('back-btn');
 const progressText = document.getElementById('progress-text');
@@ -104,26 +107,55 @@ function updateModeUI() {
     else { modeIncludeBtn.classList.add('active'); modeExcludeBtn.classList.remove('active'); }
 }
 
-// 📌 사이드바도 실제 출제될 배열(displayWords)을 기준으로 그리도록 변경
+// 📌 [수정] 오답노트 관리 모드일 때는 체크박스 대신 수동 제거용 ❌ 버튼 렌더링하도록 튜닝
 function renderSidebarList() {
-    vocaListUI.innerHTML = ""; let currentList = getCurrentList();
-    displayWords.forEach((word, index) => {
-        const li = document.createElement('li');
-        const isChecked = currentList.includes(word.chinese);
-        li.innerHTML = `<input type="checkbox" data-chinese="${word.chinese}" ${isChecked ? 'checked' : ''}><span><span class="word-index">${index + 1}.</span> <strong>${word.chinese}</strong> (${word.pinyin}) - ${word.korean}</span>`;
-        const checkbox = li.querySelector('input');
-        checkbox.addEventListener('change', (e) => {
-            let list = getCurrentList();
-            if (e.target.checked) { if (!list.includes(word.chinese)) list.push(word.chinese); } 
-            else { list = list.filter(w => w !== word.chinese); }
-            updateCurrentList(list);
+    vocaListUI.innerHTML = ""; 
+    let currentList = getCurrentList();
+
+    if (questionMode === 'saved-wrong') {
+        // 오답노트 편집/관리 전용 출력 UI
+        if (displayWords.length === 0) {
+            vocaListUI.innerHTML = `<li style="color:#888; text-align:center; padding: 20px 0;">오답노트가 텅 비어 있습니다.<br>오답을 추가해 보세요!</li>`;
+            return;
+        }
+        displayWords.forEach((word, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <button class="delete-wrong-item-btn" data-index="${index}">❌</button>
+                <span><span class="word-index">${index + 1}.</span> <strong>${word.chinese}</strong> (${word.pinyin}) - ${word.korean}</span>
+            `;
+            li.querySelector('.delete-wrong-item-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                let idx = parseInt(e.target.getAttribute('data-index'));
+                savedWrongWords.splice(idx, 1);
+                localStorage.setItem(getSavedWrongKey(), JSON.stringify(savedWrongWords));
+                displayWords = [...savedWrongWords];
+                rangeEnd.placeholder = displayWords.length;
+                renderSidebarList();
+            });
+            vocaListUI.appendChild(li);
         });
-        li.querySelector('span').addEventListener('click', () => { checkbox.click(); });
-        vocaListUI.appendChild(li);
-    });
+    } else {
+        // 일반 전체 단어 리스트 출력 UI
+        displayWords.forEach((word, index) => {
+            const li = document.createElement('li');
+            const isChecked = currentList.includes(word.chinese);
+            li.innerHTML = `<input type="checkbox" data-chinese="${word.chinese}" ${isChecked ? 'checked' : ''}><span><span class="word-index">${index + 1}.</span> <strong>${word.chinese}</strong> (${word.pinyin}) - ${word.korean}</span>`;
+            const checkbox = li.querySelector('input');
+            checkbox.addEventListener('change', (e) => {
+                let list = getCurrentList();
+                if (e.target.checked) { if (!list.includes(word.chinese)) list.push(word.chinese); } 
+                else { list = list.filter(w => w !== word.chinese); }
+                updateCurrentList(list);
+            });
+            li.querySelector('span').addEventListener('click', () => { checkbox.click(); });
+            vocaListUI.appendChild(li);
+        });
+    }
 }
 
 function applyRangeSelection(isCheck) {
+    if (questionMode === 'saved-wrong') return; // 오답노트 모드에선 범위 체크 차단
     let start = parseInt(rangeStart.value); let end = parseInt(rangeEnd.value);
     if (isNaN(start)) start = 1; if (isNaN(end)) end = displayWords.length;
     if (start < 1) start = 1; if (end > displayWords.length) end = displayWords.length;
@@ -137,54 +169,36 @@ function applyRangeSelection(isCheck) {
     updateCurrentList(list); renderSidebarList(); 
 }
 
-rangeCheckBtn.addEventListener('click', () => applyRangeSelection(true));
-rangeUncheckBtn.addEventListener('click', () => applyRangeSelection(false));
+if(rangeCheckBtn) rangeCheckBtn.addEventListener('click', () => applyRangeSelection(true));
+if(rangeUncheckBtn) rangeUncheckBtn.addEventListener('click', () => applyRangeSelection(false));
 
 function generateSingleCharWords(sourceWords) {
     const singleCharExcludes = new Set();
     sourceWords.forEach(w => { if (w.chinese.length === 1) singleCharExcludes.add(w.chinese); });
 
     const charMap = new Map();
-    const syllableRegex = /([bpmfdtnlgkhjqxrzcsyw]*[aāáǎàeēéěèoōóǒòiīíǐìuūúǔùüǖǘǚǜ]+(?:ng|n|r)?)/ig;
+    const syllableRegex = /([bpmfdtnlgkhjqxrzcsyw]*(?:[aāáǎàeēéěèoōóǒòiīíǐìuūúǔùüǖǘǚǜ]+)(?:ng|n|r)?(?![aāáǎàeēéěèoōóǒòiīíǐìuūúǔùüǖǘǚǜ]))/ig;
 
     sourceWords.forEach(wordObj => {
-        if (wordObj.chinese.length > 1) {
-            let pinyinStr = wordObj.pinyin.replace(/['’`′]/g, '');
-            let syllables = pinyinStr.includes(' ') ? pinyinStr.split(/\s+/) : (pinyinStr.match(syllableRegex) || []);
-
-            if (syllables.length === wordObj.chinese.length) {
-                for (let i = 0; i < wordObj.chinese.length; i++) {
-                    let char = wordObj.chinese[i];
-                    
-                    // 📌 성조 복구 사전에 이 글자가 있다면 원래 성조를 덮어씌움! 없다면 잘라낸 병음 사용.
+        let cleanChinese = wordObj.chinese.replace(/[^\u4e00-\u9fa5]/g, '');
+        if (cleanChinese.length > 1) {
+            let syllables = wordObj.pinyin.match(syllableRegex) || [];
+            if (syllables.length === cleanChinese.length) {
+                for (let i = 0; i < cleanChinese.length; i++) {
+                    let char = cleanChinese[i];
                     let py = originalToneDictionary[char] || syllables[i];
-
                     if (singleCharExcludes.has(char)) continue;
-
                     if (!charMap.has(char)) {
-                        charMap.set(char, {
-                            chinese: char,
-                            pinyin: py.toLowerCase(),
-                            korean: "", 
-                            sources: [] 
-                        });
+                        charMap.set(char, { chinese: char, pinyin: py.toLowerCase(), korean: "", sources: [] });
                     }
-                    
                     const entry = charMap.get(char);
-                    if (!entry.sources.some(s => s.chinese === wordObj.chinese)) {
-                        entry.sources.push(wordObj);
-                    }
+                    if (!entry.sources.some(s => s.chinese === wordObj.chinese)) { entry.sources.push(wordObj); }
                 }
             }
         }
     });
-    
     let results = Array.from(charMap.values());
-    // 사이드바에 어떤 단어에서 파생되었는지 보여주기 위해 korean 항목 업데이트
-    results.forEach(entry => {
-        entry.korean = "포함 단어: " + entry.sources.map(s => s.chinese).join(', ');
-    });
-    
+    results.forEach(entry => { entry.korean = "포함 단어: " + entry.sources.map(s => s.chinese).join(', '); });
     return results;
 }
 
@@ -199,8 +213,15 @@ fetch(jsonFileName)
             return { chinese: item.chinese || item.word, pinyin: item.pinyin, korean: cleanKorean };
         });
         
-        // 📌 [핵심 3] 시험 모드에 따라 사이드바에 그릴 데이터(displayWords)를 미리 세팅
-        if (questionMode === 'single-char') {
+        // 📌 [수정] 오답노트 모드일 때는 사이드바에 저장된 오답 리스트를 강제 대입
+        if (questionMode === 'saved-wrong') {
+            displayWords = [...savedWrongWords];
+            sidebarTitle.textContent = "📁 저장된 오답노트 편집기";
+            sidebarToggles.style.display = "none";
+            sidebarResetContainer.style.display = "none";
+            sidebarRangeSelector.style.display = "none";
+            sidebarWrongAddSelector.style.display = "flex"; // 수동 추가 폼 가동
+        } else if (questionMode === 'single-char') {
             displayWords = generateSingleCharWords(allWords);
         } else {
             displayWords = [...allWords];
@@ -217,14 +238,75 @@ fetch(jsonFileName)
     })
     .catch(error => { 
         console.error("데이터 로드 실패:", error); 
-        vocaListUI.innerHTML = `<li style="color:red; text-align:center;">${jsonFileName} 파일을 찾을 수 없습니다!</li>`; 
+        vocaListUI.innerHTML = `<li style="color:red; text-align:center;">${jsonFileName} 파일 구조나 데이터에 문제가 있습니다.</li>`; 
     });
 
 
+// 📌 [신규] 영구 오답노트에 수동으로 단어를 추가하는 단추 클릭 이벤트
+addCustomWrongBtn.addEventListener('click', () => {
+    let zh = addWrongZh.value.trim();
+    let py = addWrongPy.value.trim();
+    let ko = addWrongKo.value.trim();
+
+    if (!zh || !py || !ko) {
+        alert("한자, 병음, 뜻을 모두 입력해야 오답노트에 추가할 수 있습니다.");
+        return;
+    }
+
+    // 중복 체크
+    if (savedWrongWords.some(w => w.chinese === zh)) {
+        alert("이미 오답노트에 존재하는 한자 단어입니다.");
+        return;
+    }
+
+    savedWrongWords.push({ chinese: zh, pinyin: py, korean: ko });
+    localStorage.setItem(getSavedWrongKey(), JSON.stringify(savedWrongWords));
+    
+    // UI 동적 갱신
+    displayWords = [...savedWrongWords];
+    rangeEnd.placeholder = displayWords.length;
+    renderSidebarList();
+
+    // 입력창 초기화
+    addWrongZh.value = ""; addWrongPy.value = ""; addWrongKo.value = "";
+    addWrongZh.focus();
+});
+
+
+// 📌 [신규] 메인 하단에서 '현재 틀린 오답들을 통째로 영구 저장소에 저장'하는 이벤트
+saveWrongBtn.addEventListener('click', () => {
+    if (wrongWordsList.length === 0) {
+        alert("현재 시험 중 저장할 오답 단어가 존재하지 않습니다.");
+        return;
+    }
+
+    let addedCount = 0;
+    wrongWordsList.forEach(word => {
+        // 이미 저장된 오답 리스트에 없다면 추가
+        if (!savedWrongWords.some(w => w.chinese === word.chinese)) {
+            savedWrongWords.push(word);
+            addedCount++;
+        }
+    });
+
+    if (addedCount > 0) {
+        localStorage.setItem(getSavedWrongKey(), JSON.stringify(savedWrongWords));
+        alert(`🎉 새 오답 단어 ${addedCount}개가 누적 오답노트에 영구 저장되었습니다!`);
+    } else {
+        alert("모든 오답 단어가 이미 영구 오답노트에 보관되어 있습니다.");
+    }
+});
+
+
 startTestBtn.addEventListener('click', () => {
-    // 이제 화면에 보이는 리스트(displayWords)에서 바로 필터링해서 문제 배열(words) 완성!
-    if (selectionMode === 'exclude') words = displayWords.filter(w => !excludedWords.includes(w.chinese));
-    else words = displayWords.filter(w => includedWords.includes(w.chinese));
+    if (questionMode === 'saved-wrong') {
+        // 오답노트 전용 시험 모드
+        words = [...displayWords];
+    } else {
+        // 일반 필터링 모드
+        if (selectionMode === 'exclude') words = displayWords.filter(w => !excludedWords.includes(w.chinese));
+        else words = displayWords.filter(w => includedWords.includes(w.chinese));
+    }
 
     if (words.length === 0) { alert("선택된 시험 단어가 없습니다! 설정을 확인해 주세요."); return; }
 
@@ -250,11 +332,12 @@ backBtn.addEventListener('click', () => {
     nextBtn.style.display = "none"; forgotHanziBtn.style.display = "none"; endButtons.style.display = "none"; wrongContainer.style.display = "none";
     feedbackMsg.textContent = "";
     localStorage.removeItem(getStoreKey('active_words')); localStorage.removeItem(getStoreKey('index'));
+    location.reload(); // 원상복구용 새로고침
 });
 
-modeExcludeBtn.addEventListener('click', () => { selectionMode = 'exclude'; localStorage.setItem(getStoreKey('mode'), selectionMode); updateModeUI(); renderSidebarList(); });
-modeIncludeBtn.addEventListener('click', () => { selectionMode = 'include'; localStorage.setItem(getStoreKey('mode'), selectionMode); updateModeUI(); renderSidebarList(); });
-resetChecksBtn.addEventListener('click', () => { if(confirm("현재 시험 범위에서 체크한 내용을 모두 초기화하시겠습니까?")) { updateCurrentList([]); renderSidebarList(); } });
+if(modeExcludeBtn) modeExcludeBtn.addEventListener('click', () => { selectionMode = 'exclude'; localStorage.setItem(getStoreKey('mode'), selectionMode); updateModeUI(); renderSidebarList(); });
+if(modeIncludeBtn) modeIncludeBtn.addEventListener('click', () => { selectionMode = 'include'; localStorage.setItem(getStoreKey('mode'), selectionMode); updateModeUI(); renderSidebarList(); });
+if(resetChecksBtn) resetChecksBtn.addEventListener('click', () => { if(confirm("현재 시험 범위에서 체크한 내용을 모두 초기화하시겠습니까?")) { updateCurrentList([]); renderSidebarList(); } });
 
 function showWord() {
     localStorage.setItem(getStoreKey('index'), currentIndex);
@@ -271,7 +354,8 @@ function showWord() {
     const currentWord = words[currentIndex];
     if(sourceInfoBox) sourceInfoBox.style.display = "none"; 
     
-    if (questionMode === 'ko-to-py') {
+    // 오답노트 모드에서 출제할 때는 뜻을 보고 정답 병음을 치도록 기본 세팅 처리
+    if (questionMode === 'ko-to-py' || questionMode === 'saved-wrong') {
         koreanText.textContent = currentWord.korean;
         koreanText.style.display = "block";
         chineseText.style.display = "none";
@@ -376,12 +460,10 @@ function checkAnswer() {
 }
 
 function correctAction(currentWord) {
-    if (questionMode === 'ko-to-py') {
+    if (questionMode === 'ko-to-py' || questionMode === 'saved-wrong') {
         chineseText.textContent = currentWord.chinese; chineseText.style.display = "block";
-    } else if (questionMode === 'zh-to-py') {
+    } else {
         koreanText.textContent = currentWord.korean; koreanText.style.display = "block"; 
-    } else if (questionMode === 'single-char') {
-        koreanText.style.display = "none"; // 쪼개기 모드일 때는 별도 뜻을 숨김 (아래 박스에서 보여주니까)
     }
     
     if (questionMode === 'single-char' && currentWord.sources && sourceInfoBox) {
@@ -392,7 +474,6 @@ function correctAction(currentWord) {
     }
 
     pinyinInput.disabled = true; submitBtn.style.display = "none"; toneButtons.style.display = "none"; 
-    
     nextBtn.style.display = "inline-block"; 
     forgotHanziBtn.style.display = "inline-block";
     nextBtn.focus();
@@ -417,8 +498,7 @@ forgotHanziBtn.addEventListener('click', () => {
 function renderWrongListUI() {
     wrongList.innerHTML = ""; 
     wrongWordsList.forEach(word => { 
-        // 쪼개기 모드면 오답노트에 "포함 단어" 표시, 아니면 원래 뜻 표시
-        let meaning = questionMode === 'single-char' ? word.korean : word.korean;
+        let meaning = word.korean;
         const li = document.createElement('li'); 
         li.innerHTML = `<strong>${word.chinese}</strong> (${word.pinyin}) : ${meaning}`; 
         wrongList.appendChild(li); 
