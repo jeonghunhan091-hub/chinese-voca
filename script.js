@@ -11,17 +11,41 @@ const qmodeSelect = document.getElementById('qmode-select');
 let questionMode = localStorage.getItem('chinese_voca_qmode') || 'zh-to-py';
 qmodeSelect.value = questionMode;
 
+// 📌 모드가 바뀌면 리스트를 새로 그려야 하므로 새로고침으로 깔끔하게 상태 리셋
 qmodeSelect.addEventListener('change', (e) => {
     questionMode = e.target.value;
     localStorage.setItem('chinese_voca_qmode', questionMode);
-    if (words.length > 0 && currentIndex < words.length) showWord(); 
+    location.reload(); 
 });
 
+// 📌 [핵심 1] 일반 모드와 쪼개기 모드의 체크박스 저장 공간을 완벽히 분리
+const modePrefix = questionMode === 'single-char' ? 'single' : 'normal';
 function getStoreKey(keyName) {
-    return `cv_${currentScope}_${keyName}`;
+    return `cv_${currentScope}_${modePrefix}_${keyName}`;
 }
 
+// 📌 [핵심 2] 원래 성조 복구 사전 (Tone Sandhi Fix)
+// 합쳐지며 성조가 바뀌는 대표적인 글자들의 본래 성조를 입력해 둡니다. 
+// 필요한 글자가 있다면 여기에 '한자': '원래병음' 형식으로 언제든 추가하면 됩니다!
+const originalToneDictionary = {
+    '一': 'yī', 
+    '不': 'bù', 
+    '很': 'hěn', 
+    '好': 'hǎo', 
+    '你': 'nǐ', 
+    '我': 'wǒ', 
+    '也': 'yě', 
+    '老': 'lǎo', 
+    '买': 'mǎi', 
+    '水': 'shuǐ', 
+    '果': 'guǒ',
+    '小': 'xiǎo',
+    '可': 'kě',
+    '以': 'yǐ'
+};
+
 let allWords = [];
+let displayWords = []; // 화면(사이드바)에 띄울 실제 단어 목록
 let words = [];
 let currentIndex = 0;
 let wrongWordsList = [];
@@ -35,11 +59,9 @@ function getCurrentList() { return selectionMode === 'exclude' ? excludedWords :
 
 function updateCurrentList(newList) {
     if (selectionMode === 'exclude') {
-        excludedWords = newList;
-        localStorage.setItem(getStoreKey('excluded'), JSON.stringify(excludedWords));
+        excludedWords = newList; localStorage.setItem(getStoreKey('excluded'), JSON.stringify(excludedWords));
     } else {
-        includedWords = newList;
-        localStorage.setItem(getStoreKey('included'), JSON.stringify(includedWords));
+        includedWords = newList; localStorage.setItem(getStoreKey('included'), JSON.stringify(includedWords));
     }
 }
 
@@ -49,17 +71,14 @@ const modeExcludeBtn = document.getElementById('mode-exclude-btn');
 const modeIncludeBtn = document.getElementById('mode-include-btn');
 const resetChecksBtn = document.getElementById('reset-checks-btn');
 const startTestBtn = document.getElementById('start-test-btn');
-
 const rangeStart = document.getElementById('range-start');
 const rangeEnd = document.getElementById('range-end');
 const rangeCheckBtn = document.getElementById('range-check-btn');
 const rangeUncheckBtn = document.getElementById('range-uncheck-btn');
-
 const welcomeScreen = document.getElementById('welcome-screen');
 const backBtn = document.getElementById('back-btn');
 const progressText = document.getElementById('progress-text');
 const wrongContainer = document.getElementById('wrong-container');
-
 const chineseText = document.getElementById('chinese-text');
 const koreanText = document.getElementById('korean-text');
 const pinyinInput = document.getElementById('pinyin-input');
@@ -67,7 +86,7 @@ const submitBtn = document.getElementById('submit-btn');
 const nextBtn = document.getElementById('next-btn');
 const forgotHanziBtn = document.getElementById('forgot-hanzi-btn');
 const feedbackMsg = document.getElementById('feedback-msg');
-const sourceInfoBox = document.getElementById('source-info-box'); // html 내 보관 처리용
+const sourceInfoBox = document.getElementById('source-info-box');
 const wrongList = document.getElementById('wrong-list');
 const toneButtons = document.getElementById('tone-buttons');
 const endButtons = document.getElementById('end-buttons');
@@ -81,37 +100,24 @@ const toneMarks = {
 };
 
 function updateModeUI() {
-    if (selectionMode === 'exclude') {
-        modeExcludeBtn.classList.add('active'); modeIncludeBtn.classList.remove('active');
-    } else {
-        modeIncludeBtn.classList.add('active'); modeExcludeBtn.classList.remove('active');
-    }
+    if (selectionMode === 'exclude') { modeExcludeBtn.classList.add('active'); modeIncludeBtn.classList.remove('active'); } 
+    else { modeIncludeBtn.classList.add('active'); modeExcludeBtn.classList.remove('active'); }
 }
 
+// 📌 사이드바도 실제 출제될 배열(displayWords)을 기준으로 그리도록 변경
 function renderSidebarList() {
-    vocaListUI.innerHTML = "";
-    let currentList = getCurrentList();
-
-    allWords.forEach((word, index) => {
+    vocaListUI.innerHTML = ""; let currentList = getCurrentList();
+    displayWords.forEach((word, index) => {
         const li = document.createElement('li');
         const isChecked = currentList.includes(word.chinese);
-        
-        li.innerHTML = `
-            <input type="checkbox" data-chinese="${word.chinese}" ${isChecked ? 'checked' : ''}>
-            <span><span class="word-index">${index + 1}.</span> <strong>${word.chinese}</strong> (${word.pinyin}) - ${word.korean}</span>
-        `;
-        
+        li.innerHTML = `<input type="checkbox" data-chinese="${word.chinese}" ${isChecked ? 'checked' : ''}><span><span class="word-index">${index + 1}.</span> <strong>${word.chinese}</strong> (${word.pinyin}) - ${word.korean}</span>`;
         const checkbox = li.querySelector('input');
         checkbox.addEventListener('change', (e) => {
             let list = getCurrentList();
-            if (e.target.checked) {
-                if (!list.includes(word.chinese)) list.push(word.chinese);
-            } else {
-                list = list.filter(w => w !== word.chinese);
-            }
+            if (e.target.checked) { if (!list.includes(word.chinese)) list.push(word.chinese); } 
+            else { list = list.filter(w => w !== word.chinese); }
             updateCurrentList(list);
         });
-        
         li.querySelector('span').addEventListener('click', () => { checkbox.click(); });
         vocaListUI.appendChild(li);
     });
@@ -119,18 +125,14 @@ function renderSidebarList() {
 
 function applyRangeSelection(isCheck) {
     let start = parseInt(rangeStart.value); let end = parseInt(rangeEnd.value);
-    if (isNaN(start)) start = 1; if (isNaN(end)) end = allWords.length;
-    if (start < 1) start = 1; if (end > allWords.length) end = allWords.length;
+    if (isNaN(start)) start = 1; if (isNaN(end)) end = displayWords.length;
+    if (start < 1) start = 1; if (end > displayWords.length) end = displayWords.length;
     if (start > end) { alert("시작 번호가 끝 번호보다 클 수 없습니다."); return; }
-
     let list = getCurrentList();
     for (let i = start - 1; i < end; i++) {
-        const wordChinese = allWords[i].chinese;
-        if (isCheck) {
-            if (!list.includes(wordChinese)) list.push(wordChinese);
-        } else {
-            list = list.filter(w => w !== wordChinese);
-        }
+        const wordChinese = displayWords[i].chinese;
+        if (isCheck) { if (!list.includes(wordChinese)) list.push(wordChinese); } 
+        else { list = list.filter(w => w !== wordChinese); }
     }
     updateCurrentList(list); renderSidebarList(); 
 }
@@ -138,38 +140,6 @@ function applyRangeSelection(isCheck) {
 rangeCheckBtn.addEventListener('click', () => applyRangeSelection(true));
 rangeUncheckBtn.addEventListener('click', () => applyRangeSelection(false));
 
-const jsonFileName = currentScope === 'midterm' ? 'midterm.json' : 'final.json';
-
-fetch(jsonFileName)
-    .then(response => response.json())
-    .then(data => {
-        allWords = data.map(item => {
-            let rawKorean = item.korean || item.meaning; 
-            // 📌 인공지능 출처 태그를 강제로 필터링하는 우회 구문 (절대 잘리지 않음)
-            let cleanKorean = rawKorean ? rawKorean.replace(/\s*\x5Bcite:\s*\d+\x5D/g, '') : '';
-            return { chinese: item.chinese || item.word, pinyin: item.pinyin, korean: cleanKorean };
-        });
-        
-        rangeEnd.placeholder = allWords.length;
-
-        updateModeUI();
-        renderSidebarList();
-        
-        if (localStorage.getItem(getStoreKey('index')) && localStorage.getItem(getStoreKey('active_words'))) {
-            words = JSON.parse(localStorage.getItem(getStoreKey('active_words')));
-            currentIndex = parseInt(localStorage.getItem(getStoreKey('index')));
-            if (localStorage.getItem(getStoreKey('wrong'))) {
-                wrongWordsList = JSON.parse(localStorage.getItem(getStoreKey('wrong')));
-            }
-            startTestUI();
-        }
-    })
-    .catch(error => {
-        console.error("데이터 로드 실패:", error);
-        vocaListUI.innerHTML = `<li style="color:red; text-align:center;">${jsonFileName} 파일을 찾을 수 없습니다!</li>`;
-    });
-
-// 📌 한 글자 쪼개기 마법의 함수
 function generateSingleCharWords(sourceWords) {
     const singleCharExcludes = new Set();
     sourceWords.forEach(w => { if (w.chinese.length === 1) singleCharExcludes.add(w.chinese); });
@@ -185,7 +155,9 @@ function generateSingleCharWords(sourceWords) {
             if (syllables.length === wordObj.chinese.length) {
                 for (let i = 0; i < wordObj.chinese.length; i++) {
                     let char = wordObj.chinese[i];
-                    let py = syllables[i];
+                    
+                    // 📌 성조 복구 사전에 이 글자가 있다면 원래 성조를 덮어씌움! 없다면 잘라낸 병음 사용.
+                    let py = originalToneDictionary[char] || syllables[i];
 
                     if (singleCharExcludes.has(char)) continue;
 
@@ -193,7 +165,7 @@ function generateSingleCharWords(sourceWords) {
                         charMap.set(char, {
                             chinese: char,
                             pinyin: py.toLowerCase(),
-                            korean: "한 글자 병음 맞추기", 
+                            korean: "", 
                             sources: [] 
                         });
                     }
@@ -207,25 +179,54 @@ function generateSingleCharWords(sourceWords) {
         }
     });
     
-    return Array.from(charMap.values());
+    let results = Array.from(charMap.values());
+    // 사이드바에 어떤 단어에서 파생되었는지 보여주기 위해 korean 항목 업데이트
+    results.forEach(entry => {
+        entry.korean = "포함 단어: " + entry.sources.map(s => s.chinese).join(', ');
+    });
+    
+    return results;
 }
 
-startTestBtn.addEventListener('click', () => {
-    let selectedWords = [];
-    if (selectionMode === 'exclude') selectedWords = allWords.filter(w => !excludedWords.includes(w.chinese));
-    else selectedWords = allWords.filter(w => includedWords.includes(w.chinese));
+const jsonFileName = currentScope === 'midterm' ? 'midterm.json' : 'final.json';
 
-    if (selectedWords.length === 0) { alert("선택된 시험 단어가 없습니다! 설정을 확인해 주세요."); return; }
-
-    if (questionMode === 'single-char') {
-        words = generateSingleCharWords(selectedWords);
-        if (words.length === 0) {
-            alert("조건에 맞는 한 글자 단어가 없습니다! (선택한 단어가 모두 1글자이거나 분리할 수 없음)");
-            return;
+fetch(jsonFileName)
+    .then(response => response.json())
+    .then(data => {
+        allWords = data.map(item => {
+            let rawKorean = item.korean || item.meaning; 
+            let cleanKorean = rawKorean ? rawKorean.replace(/\s*\x5Bcite:\s*\d+\x5D/g, '') : '';
+            return { chinese: item.chinese || item.word, pinyin: item.pinyin, korean: cleanKorean };
+        });
+        
+        // 📌 [핵심 3] 시험 모드에 따라 사이드바에 그릴 데이터(displayWords)를 미리 세팅
+        if (questionMode === 'single-char') {
+            displayWords = generateSingleCharWords(allWords);
+        } else {
+            displayWords = [...allWords];
         }
-    } else {
-        words = [...selectedWords];
-    }
+
+        rangeEnd.placeholder = displayWords.length; updateModeUI(); renderSidebarList();
+        
+        if (localStorage.getItem(getStoreKey('index')) && localStorage.getItem(getStoreKey('active_words'))) {
+            words = JSON.parse(localStorage.getItem(getStoreKey('active_words')));
+            currentIndex = parseInt(localStorage.getItem(getStoreKey('index')));
+            if (localStorage.getItem(getStoreKey('wrong'))) { wrongWordsList = JSON.parse(localStorage.getItem(getStoreKey('wrong'))); }
+            startTestUI();
+        }
+    })
+    .catch(error => { 
+        console.error("데이터 로드 실패:", error); 
+        vocaListUI.innerHTML = `<li style="color:red; text-align:center;">${jsonFileName} 파일을 찾을 수 없습니다!</li>`; 
+    });
+
+
+startTestBtn.addEventListener('click', () => {
+    // 이제 화면에 보이는 리스트(displayWords)에서 바로 필터링해서 문제 배열(words) 완성!
+    if (selectionMode === 'exclude') words = displayWords.filter(w => !excludedWords.includes(w.chinese));
+    else words = displayWords.filter(w => includedWords.includes(w.chinese));
+
+    if (words.length === 0) { alert("선택된 시험 단어가 없습니다! 설정을 확인해 주세요."); return; }
 
     currentIndex = 0; wrongWordsList = [];
     localStorage.setItem(getStoreKey('active_words'), JSON.stringify(words));
@@ -237,8 +238,7 @@ startTestBtn.addEventListener('click', () => {
 function startTestUI() {
     sidebar.style.display = "none"; welcomeScreen.style.display = "none";
     backBtn.style.display = "inline-block"; progressText.style.display = "inline-block"; shuffleBtn.style.display = "inline-block";
-    wrongContainer.style.display = "block";
-    renderWrongListUI(); showWord();
+    wrongContainer.style.display = "block"; renderWrongListUI(); showWord();
 }
 
 backBtn.addEventListener('click', () => {
@@ -264,8 +264,7 @@ function showWord() {
         koreanText.style.display = "none"; pinyinInput.style.display = "none"; submitBtn.style.display = "none"; toneButtons.style.display = "none"; 
         nextBtn.style.display = "none"; forgotHanziBtn.style.display = "none"; shuffleBtn.style.display = "none"; progressText.style.display = "none"; feedbackMsg.textContent = "";
         if(sourceInfoBox) sourceInfoBox.style.display = "none";
-        endButtons.style.display = "block";
-        retryWrongBtn.style.display = wrongWordsList.length > 0 ? "inline-block" : "none";
+        endButtons.style.display = "block"; retryWrongBtn.style.display = wrongWordsList.length > 0 ? "inline-block" : "none";
         return;
     }
 
@@ -378,11 +377,11 @@ function checkAnswer() {
 
 function correctAction(currentWord) {
     if (questionMode === 'ko-to-py') {
-        chineseText.textContent = currentWord.chinese;
-        chineseText.style.display = "block";
-    } else {
-        koreanText.textContent = currentWord.korean;
-        koreanText.style.display = "block"; 
+        chineseText.textContent = currentWord.chinese; chineseText.style.display = "block";
+    } else if (questionMode === 'zh-to-py') {
+        koreanText.textContent = currentWord.korean; koreanText.style.display = "block"; 
+    } else if (questionMode === 'single-char') {
+        koreanText.style.display = "none"; // 쪼개기 모드일 때는 별도 뜻을 숨김 (아래 박스에서 보여주니까)
     }
     
     if (questionMode === 'single-char' && currentWord.sources && sourceInfoBox) {
@@ -418,8 +417,10 @@ forgotHanziBtn.addEventListener('click', () => {
 function renderWrongListUI() {
     wrongList.innerHTML = ""; 
     wrongWordsList.forEach(word => { 
+        // 쪼개기 모드면 오답노트에 "포함 단어" 표시, 아니면 원래 뜻 표시
+        let meaning = questionMode === 'single-char' ? word.korean : word.korean;
         const li = document.createElement('li'); 
-        li.innerHTML = `<strong>${word.chinese}</strong> (${word.pinyin}) : ${word.korean}`; 
+        li.innerHTML = `<strong>${word.chinese}</strong> (${word.pinyin}) : ${meaning}`; 
         wrongList.appendChild(li); 
     });
 }
