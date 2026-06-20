@@ -16,8 +16,8 @@
 
         #sidebar h3 { margin-top: 10px; text-align: center; color: #333; font-size: 1.1rem; border-top: 1px solid #eee; padding-top: 15px; }
         
-        .mode-toggles { display: flex; gap: 5px; margin-bottom: 10px; }
-        .mode-btn { flex: 1; padding: 8px; font-size: 0.85rem; border: 1px solid #ccc; background-color: #f9f9f9; cursor: pointer; border-radius: 5px; }
+        .mode-toggles { display: flex; gap: 3px; margin-bottom: 10px; }
+        .mode-btn { flex: 1; padding: 8px 4px; font-size: 0.8rem; border: 1px solid #ccc; background-color: #f9f9f9; cursor: pointer; border-radius: 5px; }
         .mode-btn.active { background-color: #2196F3; color: white; border-color: #2196F3; font-weight: bold; }
         
         .reset-btn-container { text-align: right; margin-bottom: 10px; }
@@ -31,10 +31,9 @@
         #range-check-btn { background-color: #4CAF50; }
         #range-uncheck-btn { background-color: #f44336; }
 
-        /* 📌 오답노트 전용 수동 추가 폼 스타일 */
         .wrong-add-selector { display: none; flex-direction: column; gap: 5px; margin-bottom: 10px; padding: 10px; background-color: #f3e5f5; border-radius: 5px; border: 1px solid #e1bee7; font-size: 0.85rem; }
         .wrong-add-inputs { display: flex; gap: 3px; }
-        .wrong-add-inputs input { flex: 1; padding: 5px; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 3px; }
+        .wrong-add-inputs input { flex: 1; padding: 5px; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 3px; width:30%; }
         #add-custom-wrong-btn { width: 100%; padding: 6px; font-size: 0.85rem; background-color: #9C27B0; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; margin-top: 3px; }
 
         #voca-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex-grow: 1; border: 1px solid #eee; border-radius: 5px; padding: 10px; }
@@ -109,14 +108,14 @@
                 <option value="zh-to-py">문제: 한자 보고 병음 맞추기</option>
                 <option value="ko-to-py">문제: 뜻 보고 병음 맞추기</option>
                 <option value="single-char">🔥 문제: 한 글자씩 쪼개서 맞추기</option>
-                <option value="saved-wrong">📁 저장된 오답노트 관리/시험</option>
             </select>
 
             <h3 id="sidebar-title">📝 단어장 관리</h3>
             
             <div class="mode-toggles" id="sidebar-toggles">
-                <button class="mode-btn active" id="mode-exclude-btn">제외할 단어 선택</button>
-                <button class="mode-btn" id="mode-include-btn">시험 볼 단어 선택</button>
+                <button class="mode-btn active" id="mode-exclude-btn">제외할 단어</button>
+                <button class="mode-btn" id="mode-include-btn">시험 볼 단어</button>
+                <button class="mode-btn" id="mode-wrong-btn">📁 오답노트</button>
             </div>
             
             <div class="reset-btn-container" id="sidebar-reset-container">
@@ -137,9 +136,9 @@
 
             <div class="wrong-add-selector" id="sidebar-wrong-add-selector">
                 <div class="wrong-add-inputs">
-                    <input type="text" id="add-wrong-zh" placeholder="한자 (ex. 上海)" autocomplete="off">
-                    <input type="text" id="add-wrong-py" placeholder="병음 (ex. Shànghǎi)" autocomplete="off">
-                    <input type="text" id="add-wrong-ko" placeholder="뜻 (ex. 상하이)" autocomplete="off">
+                    <input type="text" id="add-wrong-zh" placeholder="한자" autocomplete="off">
+                    <input type="text" id="add-wrong-py" placeholder="병음" autocomplete="off">
+                    <input type="text" id="add-wrong-ko" placeholder="뜻" autocomplete="off">
                 </div>
                 <button id="add-custom-wrong-btn">➕ 오답노트에 단어 추가</button>
             </div>
